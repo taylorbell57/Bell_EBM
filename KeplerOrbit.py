@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-10-31
+# Last Update: 2018-11-01
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,7 +7,42 @@ import astropy.constants as const
 import scipy.optimize
 
 class KeplerOrbit(object):
-    def __init__(self, Porb=None, t0=0, a=const.au.value, inc=90, e=0, Omega=270, argp=90, m1=const.M_sun.value, m2=0):
+    """A Keplerian orbit.
+
+    Attributes:
+        a (float): The semi-major axis in m.
+        Porb (float): The orbital period in days.
+        inc (float): The orbial inclination
+                     (in degrees above face-on)
+        t0 (float): The linear ephemeris in days.
+        e (float): The orbital eccentricity.
+        Omega (float): The longitude of ascending node
+                       (in degrees CCW from line-of-sight).
+        argp (float): The argument of periastron
+                      (in degrees CCW from Omega).
+        m1 (float): The mass of body 1 in kg.
+        m2 (float): The mass of body 2 in kg.
+    
+    """
+    
+    def __init__(self, a=const.au.value, Porb=None, inc=90, t0=0, e=0, Omega=270, argp=90, m1=const.M_sun.value, m2=0):
+        """Initialization function.
+        
+        Args:
+            a (float, optional): The semi-major axis in m.
+            Porb (float, optional): The orbital period in days.
+            inc (float, optional): The orbial inclination
+                                   (in degrees above face-on)
+            t0 (float, optional): The linear ephemeris in days.
+            e (float, optional): The orbital eccentricity.
+            Omega (float, optional): The longitude of ascending node
+                                     (in degrees CCW from line-of-sight).
+            argp (float, optional): The argument of periastron
+                                    (in degrees CCW from Omega).
+            m1 (float, optional): The mass of body 1 in kg.
+            m2 (float, optional): The mass of body 2 in kg.
+        
+        """
         
         self.e = e
         self.a = a
@@ -19,49 +54,125 @@ class KeplerOrbit(object):
         self.m2 = m2
         
         if Porb == None:
-            self.Porb = self.get_period()
+            self.Porb = self.period()
         else:
             self.Porb = Porb
     
-    # Find the keplerian orbital period
-    def get_period(self):
+    def period(self):
+        """Find the keplerian orbital period.
+        
+        Returns:
+            period (float): The keplerian orbital period.
+        
+        """
+        
         return 2*np.pi*self.a**(3/2)/np.sqrt(const.G.value*(self.m1+self.m2))/(24*3600)
     
-    # Get the mean motion
-    def get_meanMotion(self):
+    def meanMotion(self):
+        """Get the mean motion.
+        
+        Returns:
+            n (float): The mean motion in radians.
+            
+        """
+        
         return 2*np.pi/self.Porb
     
-    # Convert true anomaly to eccentric anomaly
     def ta_to_ea(self, ta):
+        """Convert true anomaly to eccentric anomaly.
+        
+        Args:
+            ta (ndarray): The true anomaly in radians.
+        
+        Returns:
+            ea (ndarray): The eccentric anomaly in radians.
+        
+        """
+        
         return 2.*np.arctan(np.sqrt((1.-self.e)/(1.+self.e))*np.tan(ta/2.))
     
-    # Convert eccentric anomaly to mean anomaly
     def ea_to_ma(self, ea):
+        """Convert eccentric anomaly to mean anomaly.
+        
+        Args:
+            ea (ndarray): The eccentric anomaly in radians.
+        
+        Returns:
+            ma (ndarray): The mean anomaly in radians.
+        
+        """
+        
         return ea - self.e*np.sin(ea)
     
-    # Convert true anomaly to mean anomaly
     def ta_to_ma(self, ta):
+        """Convert true anomaly to mean anomaly.
+        
+        Args:
+            ta (ndarray): The true anomaly in radians.
+        
+        Returns:
+            ma (ndarray): The mean anomaly in radians.
+        
+        """
+        
         return self.ea_to_ma(self.ta_to_ea(ta))
     
-    # Get the time of periastron
-    def get_peri_time(self):
+    def peri_time(self):
+        """Get the time of periastron.
+        
+        Returns:
+           tperi (float): The time of periastron.
+           
+        """
+        
         return self.t0-self.ta_to_ma(np.pi/2.-self.argp)/(2*np.pi)*self.Porb
     
-    # Get the time of transit
-    def get_trans_time(self):
+    def trans_time(self):
+        """Get the time of transit.
+        
+        Returns:
+           t0 (float): The time of transit.
+           
+        """
+        
         return self.t0
     
-    # Get the time of secondary eclipse
-    def get_ecl_time(self):
+    def ecl_time(self):
+        """Get the time of secondary eclipse.
+        
+        Returns:
+           t0 (float): The time of secondary eclipse.
+           
+        """
+        
         return (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp)-self.ta_to_ma(1.*np.pi/2.-self.argp))/(2*np.pi)*self.Porb)
     
-    # Convert time to mean anomaly
-    def get_meanAnomaly(self, t):
-        return (t-self.get_peri_time()) * self.get_meanMotion()
+    def meanAnomaly(self, t):
+        """Convert time to mean anomaly.
+        
+        Args:
+            t (ndarray): The time in days.
+        
+        Returns:
+            ma (ndarray): The mean anomaly in radians.
+        
+        """
+        
+        return (t-self.peri_time()) * self.meanMotion()
     
-    # Convert time to eccentric anomaly numerically
-    def get_eccentricAnomaly(self, t, xtol=1e-10):
-        M = self.get_meanAnomaly(t)
+    def eccentricAnomaly(self, t, xtol=1e-10):
+        """Convert time to eccentric anomaly, numerically.
+        
+        Args:
+            t (ndarray): The time in days.
+            xtol (float): tolarance on error in eccentric anomaly.
+        
+        Returns:
+            ea (ndarray): The eccentric anomaly in radians.
+        
+        """
+        
+        M = self.meanAnomaly(t)
         f = lambda E: E - self.e*np.sin(E) - M
         if self.e < 0.8:
             E0 = M
@@ -70,17 +181,52 @@ class KeplerOrbit(object):
         E = scipy.optimize.fsolve(f, E0, xtol=xtol)
         return E
     
-    # Convert time to true anomaly
-    def get_trueAnomaly(self, t):
-        return 2*np.arctan(np.sqrt((1+self.e)/(1-self.e))*np.tan(self.get_eccentricAnomaly(t)/2))
+    def trueAnomaly(self, t, xtol=1e-10):
+        """Convert time to true anomaly, numerically.
+        
+        Args:
+            t (ndarray): The time in days.
+            xtol (float): tolarance on error in eccentric anomaly (calculated along the way).
+        
+        Returns:
+            ta (ndarray): The true anomaly in radians.
+        
+        """
+        
+        return 2*np.arctan(np.sqrt((1+self.e)/(1-self.e))*np.tan(self.eccentricAnomaly(t, xtol=xtol)/2))
     
-    # Find the host--planet separation at time t
-    def get_distance(self, t):
-        return self.a*(1-self.e**2)/(1+self.e*np.cos(self.get_trueAnomaly(t)))
+    def distance(self, t, xtol=1e-10):
+        """Find the separation between the two bodies.
+        
+        Args:
+            t (ndarray): The time in days.
+            xtol (float): tolarance on error in eccentric anomaly (calculated along the way).
+        
+        Returns:
+            distance (ndarray): The separation between the two bodies.
+        
+        """
+        
+        return self.a*(1-self.e**2)/(1+self.e*np.cos(self.trueAnomaly(t, xtol=xtol)))
     
     # Find the position of the planet at time t
-    def get_xyz(self, t):
-        E = self.get_eccentricAnomaly(t)
+    def xyz(self, t, xtol=1e-10):
+        """Find the coordinates of body 2 with respect to body 1.
+        
+        Args:
+            t (ndarray): The time in days.
+            xtol (float): tolarance on error in eccentric anomaly (calculated along the way).
+        
+        Returns:
+            x (ndarray): The x coordinate (along line-of-sight) of body 2 with respect to body 1.
+            y (ndarray): The y coordinate (perpendicular to line-of-sight, in orbital planet)
+                         of body 2 with respect to body 1.
+            z (ndarray): The z coordinate (perpendicular to line-of-sight, above orbital planet)
+                         of body 2 with respect to body 1.
+        
+        """
+        
+        E = self.eccentricAnomaly(t, xtol=xtol)
         
         # The following code is roughly based on:
         # https://space.stackexchange.com/questions/8911/determining-orbital-position-at-a-future-point-in-time
@@ -102,19 +248,22 @@ class KeplerOrbit(object):
         
         return x, y, z
     
-    # A Convenience Routine Used to Visualize the Planet's Orbit
     def show_orbit(self):
+        """A convenience routine to visualize the orbit
+        
+        """
+        
         t = np.linspace(0,self.Porb,100, endpoint=False)
 
-        x, y, z = np.array(self.get_xyz(t))/const.au.value
+        x, y, z = np.array(self.xyz(t))/const.au.value
 
-        tPeri = self.get_peri_time()
-        tTrans = self.get_trans_time()
-        tEcl = self.get_ecl_time()
+        tPeri = self.peri_time()
+        tTrans = self.trans_time()
+        tEcl = self.ecl_time()
 
-        xTrans, yTrans, zTrans = np.array(self.get_xyz(tTrans))/const.au.value
-        xEcl, yEcl, zEcl = np.array(self.get_xyz(tEcl))/const.au.value
-        xPeri, yPeri, zPeri = np.array(self.get_xyz(tPeri))/const.au.value
+        xTrans, yTrans, zTrans = np.array(self.xyz(tTrans))/const.au.value
+        xEcl, yEcl, zEcl = np.array(self.xyz(tEcl))/const.au.value
+        xPeri, yPeri, zPeri = np.array(self.xyz(tPeri))/const.au.value
 
         plt.plot(y, x, '.', c='k', ms=2)
         plt.plot(0,0, '*', c='r', ms=15)
@@ -150,3 +299,5 @@ class KeplerOrbit(object):
         plt.ylabel('z')
         plt.gca().set_aspect('equal')
         plt.show()
+
+        return

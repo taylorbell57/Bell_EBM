@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-10-31
+# Last Update: 2018-11-01
 
 import numpy as np
 import matplotlib
@@ -11,8 +11,71 @@ from Map import Map
 import H2_Dissociation_Routines as h2
 
 class Planet(object):
-    def __init__(self, plType='gas', rad=1, mass=1, a=0.03, Porb=None, Prot=None, vWind=0,
-                 e=0, Omega=270, inc=90, argp=90, obliq=0, argobliq=0, t0=0, albedo=0, useHealpix=False, nside=16):
+    """A planet.
+
+    Attributes:
+        a (float): The planet's semi-major axis in m.
+        albedo (float): The planet's Bond albedo.
+        argobliq (float): The reference orbital angle used for the obliquity
+                          (in degrees from inferior conjunction).
+        argp (float): The planet's argument of periastron
+                      (in degrees CCW from Omega).
+        C (float, optional): The planet's heat capacity in J/m^2/K.
+        cp (float or callable): The planet's isobaric specific heat capacity in J/kg/K.
+        cpParams (:obj:iterable, optional): Any parameters to be passed to cp if
+                                            using the bell2018 LTE H2+H mix cp
+        e (float): The planet's orbital eccentricity.
+        g (float): The planet's surface gravity in m/s^2.
+        inc (float): The planet's orbial inclination
+                               (in degrees above face-on)
+        map (:object:Map): The planet's temperature map.
+        mass (float): The planet's mass in kg.
+        mlDensity (float): The density of the planet's mixed layer.
+        mlDepth (float): The depth of the planet's mixed layer.
+        obliq (float): The planet's obliquity (axial tilt)
+                       (in degrees toward star).
+        Omega (float): The planet's longitude of ascending node
+                       (in degrees CCW from line-of-sight).
+        orbit (:object:KeplerOrbit): The planet's orbit.
+        plType (str): The planet's composition.
+        Porb (float): The planet's orbital period in days.
+        Prot (float): The planet's rotational period in days.
+        rad (float): The planet's radius in m.
+        t0 (float): The planet's linear ephemeris in days.
+        useHealpix (bool): Whether the planet's map uses a healpix grid.
+        vWind (float): The planet's wind velocity in m/s.
+    
+    """
+    
+    def __init__(self, plType='gas', rad=1, mass=1, a=0.03, Porb=None, Prot=None, vWind=0, albedo=0,
+                 inc=90, t0=0, e=0, Omega=270, argp=90, obliq=0, argobliq=0, nside=16, useHealpix=False):
+        """Initialization function.
+        
+        Args:
+            plType (str, optional): The planet's composition.
+            rad (float, optional): The planet's radius in m.
+            mass (float, optional): The planet's mass in kg.
+            a (float, optional): The planet's semi-major axis in m.
+            Porb (float, optional): The planet's orbital period in days.
+            Prot (float, optional): The planet's rotational period in days.
+            vWind (float, optional): The planet's wind velocity in m/s.
+            albedo (float, optional): The planet's Bond albedo.
+            inc (float, optional): The planet's orbial inclination
+                                   (in degrees above face-on)
+            t0 (float, optional): The planet's linear ephemeris in days.
+            e (float, optional): The planet's orbital eccentricity.
+            Omega (float, optional): The planet's longitude of ascending node
+                                     (in degrees CCW from line-of-sight).
+            argp (float, optional): The planet's argument of periastron
+                                    (in degrees CCW from Omega).
+            obliq (float, optional): The planet's obliquity (axial tilt)
+                                     (in degrees toward star).
+            argobliq (float, optional): The reference orbital angle used for obliq
+                                        (in degrees from inferior conjunction).
+            nside (int, optional): A parameter that sets the resolution of the map.
+            useHealpix (bool, optional): Whether the planet's map uses a healpix grid.
+        
+        """
         
         #Planet Attributes
         self.plType = plType
@@ -26,32 +89,31 @@ class Planet(object):
             #water
             self.cp = 4.1813e3             # J/kg/K
             self.mlDepth = 50              # m
-            self.density = 1e3             # kg/m^3
-            self.C = self.mlDepth*self.density*self.cp
+            self.mlDensity = 1e3           # kg/m^3
+            self.C = self.mlDepth*self.mlDensity*self.cp
         elif self.plType.lower() == 'rock':
             #basalt
             self.cp = 0.84e3                # J/kg/K
             self.mlDepth = 0.5              # m
-            self.density = 3e3              # kg/m^3
-            self.C = self.mlDepth*self.density*self.cp
+            self.mlDensity = 3e3            # kg/m^3
+            self.C = self.mlDepth*self.mlDensity*self.cp
         elif self.plType.lower() == 'gas':
             # H2 atmo
             self.cp = 14.31e3              # J/kg/K
             self.mlDepth = 0.1e5           # Pa
-            self.density = 1/self.g        # s^2/m
-            self.C = self.mlDepth*self.density*self.cp
+            self.mlDensity = 1/self.g      # s^2/m
+            self.C = self.mlDepth*self.mlDensity*self.cp
         elif self.plType.lower() == 'bell2018':
             # LTE H2+H atmo
             self.cp = h2.true_cp
             self.cpParams = None
             self.mlDepth = 0.1e5           # Pa
-            self.density = 1/self.g        # s^2/m
+            self.mlDensity = 1/self.g      # s^2/m
         else:
             print('Planet type not accepted!')
             return False
         
         #Map Attributes
-        self.nside = nside
         self.map = Map(nside, useHealpix=useHealpix)
                 
         #Orbital Attributes
@@ -69,9 +131,8 @@ class Planet(object):
         self.argobliq = argobliq           # degrees from t0
         self.t0 = t0                       # days
         if self.Porb != None:
-            self.orbit = KeplerOrbit(Porb=self.Porb, t0=self.t0, a=self.a,
-                                  inc=self.inc, e=self.e, Omega=self.Omega,
-                                  argp=self.argp)
+            self.orbit = KeplerOrbit(a=self.a, Porb=self.Porb, inc=self.inc, t0=self.t0, 
+                                     e=self.e, Omega=self.Omega, argp=self.argp, m2=self.mass)
         else:
             self.orbit = None
         
@@ -92,18 +153,24 @@ class Planet(object):
     
     # Used to propogate any changes to the planet's attributes through the other attributes
     def update(self):
+        """Update the planet's properties
+        
+        Used to propogate any manual changes to the planet's attributes through the other,
+        dependent attributes.
+        
+        """
         
         self.g = const.G.value*self.mass/self.rad**2
         
         if self.plType.lower() == 'gas':
             # H2 atmo
-            self.density = 1/self.g        # s^2/m
-            self.C = self.mlDepth*self.density*self.cp
+            self.mlDensity = 1/self.g        # s^2/m
+            self.C = self.mlDepth*self.mlDensity*self.cp
         elif self.plType.lower() == 'bell2018':
             # LTE H2+H atmo
-            self.density = 1/self.g        # s^2/m
+            self.mlDensity = 1/self.g        # s^2/m
         else:
-            self.C = self.mlDepth*self.density*self.cp
+            self.C = self.mlDepth*self.mlDensity*self.cp
         
         if self.Porb != None and self.Prot==None:
             self.Prot_input = self.Porb
@@ -116,32 +183,75 @@ class Planet(object):
                 self.Prot = 2*np.pi*self.rad/((self.vWind+self.vRot)*(24*3600))
         
         if self.Porb != None:
-            self.orbit = KeplerOrbit(Porb=self.Porb, t0=self.t0, a=self.a,
-                                  inc=self.inc, e=self.e, Omega=self.Omega,
-                                  argp=self.argp)
+            self.orbit = KeplerOrbit(a=self.a, Porb=self.Porb, inc=self.inc, t0=self.t0, 
+                                     e=self.e, Omega=self.Omega, argp=self.argp, m2=self.mass)
     
-    # Calculate the sub-stellar longitude and latitude
     def SSP(self, t):
-        if type(t)!=np.ndarray or len(t.shape)!=1:
-            t = np.array([t]).reshape(-1)
+        """Calculate the sub-stellar longitude and latitude.
+        
+        Args:
+            t (ndarray): The time in days.
+        
+        Returns:
+            sspLon (ndarray): The sub-stellar longitude in the same shape as t.
+            sspLat (ndarray): The sub-stellar latitude in the same shape as t.
+        
+        """
+        
+        if type(t)!=np.ndarray:
+            t = np.array([t])
+            tshape = t.shape
+        elif len(t.shape)!=1:
+            tshape = t.shape
+            t = t.reshape(-1)
+        else:
+            tshape = t.shape
         trueAnom = (self.orbit.get_trueAnomaly(t)*180/np.pi)
         trueAnom[trueAnom<0] += 360
-        ssp = (trueAnom-t/self.Prot*360)
-        ssp = ssp%180+(-180)*(np.rint(np.floor(ssp%360/180) > 0))
+        sspLon = (trueAnom-t/self.Prot*360)
+        sspLon = sspLon%180+(-180)*(np.rint(np.floor(sspLon%360/180) > 0))
         sspLat = self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
-        return ssp.reshape(-1,1), sspLat.reshape(-1,1)
+        return sspLon.reshape(tshape), sspLat.reshape(tshape)
 
-    # Calculate the sub-observer longitude and latitude
-    def SOP(self, t):
-        if type(t)!=np.ndarray or len(t.shape)==1:
-            t = np.array(t).reshape(-1,1)
-        sop = 180-(t/self.Prot)*360
-        sop = sop%180+(-180)*(np.rint(np.floor(sop%360/180) > 0))
+    def SOP(self, t, debug=False):
+        """Calculate the sub-observer longitude and latitude.
+        
+        Args:
+            t (ndarray): The time in days.
+        
+        Returns:
+            sopLon (ndarray): The sub-observer longitude in the same shape as t.
+            sopLat (ndarray): The sub-observer latitude in the same shape as t.
+        
+        """
+        
+        if type(t)!=np.ndarray:
+            t = np.array([t])
+        sopLon = 180-(t/self.Prot)*360
+        if debug:
+            print(type(sopLon))
+            print(np.floor(sopLon))
+        sopLon = sopLon%180+(-180)*(np.rint(np.floor(sopLon%360/180) > 0))
         sopLat = 90-self.inc-self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
-        return sop, sopLat
+        return sopLon, sopLat
 
-    # Calculate the instantaneous total outgoing flux
     def Fout(self, T, bolo=True, wav=1e-6):
+        """Calculate the instantaneous total outgoing flux.
+        
+        Args:
+            T (ndarray): The temperature.
+            bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
+                                   or wavelength dependent (False).
+            wav (float, optional): The wavelength to use if bolo==False.
+        
+        Returns:
+            Fout (ndarray): The emitted flux in the same shape as T.
+        
+        """
+        
+        if type(T)!=np.ndarray:
+            T = np.array([T])
+        
         if bolo:
             return const.sigma_sb.value*T**4
         else:
@@ -149,45 +259,94 @@ class Planet(object):
             b = (const.h.value*const.c.value)/(wav*const.k_B.value)
             return a/np.expm1(b/T)
         
-    # Weight flux by visibility/illumination kernel (assuming the host star is infinitely far away for now)
-    def weight(self, t, refPos='SSP'):
+    def weight(self, t, refPos='SSP', debug=False):
+        """Calculate the weighting of map pixels.
+        
+        Weight flux by visibility/illumination kernel, assuming the star/observer
+        are infinitely far away for now.
+        
+        Args:
+            t (ndarray): The time in days.
+            refPos (str, optional): The reference position (SSP or SOP).
+        
+        Returns:
+            weights (ndarray): The weighting of map mixels at time t. Has shape (t.size, self.map.npix).
+        
+        """
+        
+        if type(t)!=np.ndarray or len(t.shape)==1:
+            t = np.array([t]).reshape(-1,1)
+        
         if refPos == 'SSP':
             refLon, refLat = self.SSP(t)
         elif refPos == 'SOP':
-            refLon, refLat = self.SOP(t)
+            refLon, refLat = self.SOP(t, debug=debug)
         else:
             print('Reference point "'+str(refPos)+'" not understood!')
             return False
-        
-        if type(t)!=np.ndarray or len(t.shape)==1:
-            t = np.array(t).reshape(-1,1)
         
         lonWeight = np.max(np.append(np.zeros((1,t.size,self.map.npix)), 
                                      np.cos((self.map.lonGrid-refLon)*np.pi/180)[np.newaxis,:,:], axis=0), axis=0)
         latWeight = np.cos((self.map.latGrid-refLat)*np.pi/180)[0]
         return lonWeight*latWeight
     
-    # Calculate Fp_apparent (used for making phasecurves)
-    def Fp_vis(self, t, T, bolo=True, wav=4.5e-6):
+    def Fp_vis(self, t, T, bolo=True, wav=4.5e-6, debug=False):
+        """Calculate apparent outgoing planetary flux (used for making phasecurves).
+        
+        Weight flux by visibility/illumination kernel, assuming the star/observer
+        are infinitely far away for now.
+        
+        Args:
+            t (ndarray): The time in days.
+            T (ndarray): The temperature.
+            bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
+                                   or wavelength dependent (False).
+            wav (float, optional): The wavelength to use if bolo==False
+        
+        Returns:
+            Fout (ndarray): The apparent emitted flux. Has shape (t.size, self.map.npix).
+        
+        """
+        
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array(t).reshape(-1,1)
         
-        weights = self.weight(t, 'SOP')
+        weights = self.weight(t, 'SOP', debug=debug)
         flux = self.Fout(T, bolo, wav)*self.map.pixArea*self.rad**2
         # used to remove wiggles from finite number of pixels coming in and out of view
         weightsNormed = weights*(4*np.pi/self.map.npix)/np.pi
         
         return np.sum(flux*weights, axis=1)/np.sum(weightsNormed, axis=1)
 
-    # A Convenience Routine to Plot the Planet's Temperature Map
-    def showMap(self, tempMap, time=0):     
+    def showMap(self, tempMap, time=0):
+        """A convenience routine to plot the planet's temperature map.
+        
+        Args:
+            tempMap (ndarray): The temperature map.
+            time (float, optional): The time corresponding to the map used to de-rotate the map.
+        
+        Returns:
+            fig (obj:figure): The figure containing the plot.
+        
+        """
+        
         subStellarLon = self.SSP(time)[0].flatten()
         self.map.set_map(tempMap)
         self.map.plot_map(subStellarLon)
         return plt.gcf()
     
-    # A Convenience Routine to Plot the Planet's Dissociation Map
     def showDissociation(self, tempMap, time=0):
+        """A convenience routine to plot the planet's H2 dissociation map.
+        
+        Args:
+            tempMap (ndarray): The temperature map.
+            time (float, optional): The time corresponding to the map used to de-rotate the map.
+        
+        Returns:
+            fig (obj:figure): The figure containing the plot.
+        
+        """
+        
         subStellarLon = self.SSP(time)[0].flatten()
         self.map.set_map(tempMap)
         self.map.plot_dissociation(subStellarLon)
