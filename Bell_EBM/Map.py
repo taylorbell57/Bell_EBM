@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
-import H2_Dissociation_Routines as h2
+from . import H2_Dissociation_Routines as h2
 
 class Map(object):
     """A map.

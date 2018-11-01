@@ -6,9 +6,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import astropy.constants as const
 
-from KeplerOrbit import KeplerOrbit
-from Map import Map
-import H2_Dissociation_Routines as h2
+from .KeplerOrbit import KeplerOrbit
+from .Map import Map
+from . import H2_Dissociation_Routines as h2
 
 class Planet(object):
     """A planet.

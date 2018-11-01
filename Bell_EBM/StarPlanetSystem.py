@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import astropy.constants as const
 import scipy.integrate
 
-from Star import Star
-from Planet import Planet
-from KeplerOrbit import KeplerOrbit
+from .Star import Star
+from .Planet import Planet
+from .KeplerOrbit import KeplerOrbit
 
 
 

@@ -1,5 +1,5 @@
 .. Bell_EBM documentation master file, created by
-   sphinx-quickstart on Thu Nov  1 21:10:58 2018.
+   sphinx-quickstart on Thu Nov  1 21:54:49 2018.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -10,7 +10,7 @@ Welcome to Bell_EBM's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+Bell_EBM
 
 Indices and tables
 ==================
