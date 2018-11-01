@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 import astropy.constants as const
 import scipy.integrate
 
-from Star import *
-from Planet import *
+from Star import Star
+from Planet import Planet
+from KeplerOrbit import KeplerOrbit
 
 class System(object):
     def __init__(self, star=None, planet=None):
@@ -111,7 +112,7 @@ class System(object):
         maps = []
         while r.successful() and r.t <= t1-dt:
             times.append(r.t+dt)
-            maps.append(np.max(np.append(np.zeros_like(self.planet.lat.T),
+            maps.append(np.max(np.append(np.zeros((self.planet.map.npix,1)),
                                          r.integrate(r.t+dt).reshape(-1,1), axis=1), axis=1))
         times = np.array(times)
         maps = np.array(maps)
@@ -124,7 +125,7 @@ class System(object):
             maps = []
             while r.successful() and r.t <= t1-dt:
                 times.append(r.t+dt)
-                maps.append(np.max(np.append(np.zeros_like(self.planet.lat.T),
+                maps.append(np.max(np.append(np.zeros((self.planet.map.npix,1)),
                                              r.integrate(r.t+dt).reshape(-1,1), axis=1), axis=1))
             times = np.array(times)
             maps = np.array(maps)
@@ -160,6 +161,8 @@ class System(object):
             plt.xlabel('Time from Transit (days)', fontsize='xx-large')
         plt.xlim(np.min(x), np.max(x))
         plt.ylim(0)
+        plt.setp(plt.gca().get_xticklabels(), fontsize='x-large')
+        plt.setp(plt.gca().get_yticklabels(), fontsize='x-large')
         return plt.gcf()
     
     # A convenience plotting routine to show the planet's phasecurve in units of temperature
@@ -190,4 +193,6 @@ class System(object):
             plt.xlabel('Time from Transit (days)', fontsize='xx-large')
         plt.xlim(np.min(x), np.max(x))
         plt.ylim(0)
+        plt.setp(plt.gca().get_xticklabels(), fontsize='x-large')
+        plt.setp(plt.gca().get_yticklabels(), fontsize='x-large')
         return plt.gcf()

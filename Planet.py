@@ -5,15 +5,14 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import astropy.constants as const
-import healpy as hp
-import numbers
 
-from KeplerOrbit import *
+from KeplerOrbit import KeplerOrbit
+from Map import Map
 import H2_Dissociation_Routines as h2
 
 class Planet(object):
-    def __init__(self, plType='rock', rad=1, mass=1, a=0.03, Porb=None, Prot=None, vWind=0,
-                 e=0, Omega=270, inc=90, argp=90, obliq=0, argobliq=0, t0=0, albedo=0, useHealpix=True, nside=5):
+    def __init__(self, plType='gas', rad=1, mass=1, a=0.03, Porb=None, Prot=None, vWind=0,
+                 e=0, Omega=270, inc=90, argp=90, obliq=0, argobliq=0, t0=0, albedo=0, useHealpix=False, nside=16):
         
         #Planet Attributes
         self.plType = plType
@@ -52,41 +51,8 @@ class Planet(object):
             return False
         
         #Map Attributes
-        self.useHealpix = useHealpix
-        if self.useHealpix:
-            self.nside = np.rint(nside).astype(int)
-            self.npix = hp.nside2npix(self.nside)
-            self.pixArea = hp.nside2pixarea(self.nside)*self.rad**2
-            
-            coords = np.empty((self.npix,2))
-            for i in range(self.npix):
-                coords[i,:] = np.array(hp.pix2ang(self.nside, i))*180/np.pi
-            lon = coords[:,1]
-            lat = coords[:,0]-90
-            self.lat = lat.reshape(1,-1)
-            self.lon = lon.reshape(1,-1)
-        else:
-            self.nside = np.rint(nside).astype(int)
-            self.npix = self.nside*(2*self.nside+1)
-            
-            dlat = 180/self.nside
-            lat = np.linspace(-90+dlat/2, 90-dlat/2, self.nside)
-            latTop = lat+dlat/2
-            latBot = lat-dlat/2
-
-            dlon = 360/(self.nside*2+1)
-            lon = np.linspace(-180+dlon/2, 180-dlon/2, self.nside*2+1)
-            lonRight = lon+dlon/2
-            lonLeft = lon-dlon/2
-            
-            latArea = np.abs(2*np.pi*self.rad**2*(np.sin(latTop*np.pi/180)-np.sin(latBot*np.pi/180)))
-            areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360).reshape(-1,1)
-            lat, lon = np.meshgrid(lat, lon)
-
-            self.pixArea = areas.reshape(1, -1)
-            self.lat = lat.reshape(1,-1)
-            self.lon = lon.reshape(1, -1)
-            
+        self.nside = nside
+        self.map = Map(nside, useHealpix=useHealpix)
                 
         #Orbital Attributes
         self.a = a*const.au.value          # m
@@ -149,40 +115,6 @@ class Planet(object):
             else:
                 self.Prot = 2*np.pi*self.rad/((self.vWind+self.vRot)*(24*3600))
         
-        if self.useHealpix:
-            self.nside = np.rint(self.nside).astype(int)
-            self.npix = hp.nside2npix(self.nside)
-            self.pixArea = hp.nside2pixarea(self.nside)*self.rad**2
-            
-            coords = np.empty((self.npix,2))
-            for i in range(self.npix):
-                coords[i,:] = np.array(hp.pix2ang(self.nside, i))*180/np.pi
-            lon = coords[:,1]
-            lat = coords[:,0]-90
-            self.lat = lat.reshape(1,-1)
-            self.lon = lon.reshape(1,-1)
-        else:
-            self.nside = np.rint(self.nside).astype(int)
-            self.npix = self.nside*(2*self.nside+1)
-            
-            dlat = 180/self.nside
-            lat = np.linspace(-90+dlat/2, 90-dlat/2, self.nside)
-            latTop = lat+dlat/2
-            latBot = lat-dlat/2
-
-            dlon = 360/(self.nside*2+1)
-            lon = np.linspace(-180+dlon/2, 180-dlon/2, self.nside*2+1)
-            lonRight = lon+dlon/2
-            lonLeft = lon-dlon/2
-            
-            latArea = np.abs(2*np.pi*self.rad**2*(np.sin(latTop*np.pi/180)-np.sin(latBot*np.pi/180)))
-            areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360).reshape(-1,1)
-            lat, lon = np.meshgrid(lat, lon)
-
-            self.pixArea = areas.reshape(1, -1)
-            self.lat = lat.reshape(1,-1)
-            self.lon = lon.reshape(1, -1)
-        
         if self.Porb != None:
             self.orbit = KeplerOrbit(Porb=self.Porb, t0=self.t0, a=self.a,
                                   inc=self.inc, e=self.e, Omega=self.Omega,
@@ -230,9 +162,9 @@ class Planet(object):
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array(t).reshape(-1,1)
         
-        lonWeight = np.max(np.append(np.zeros((1,t.size,self.lon.size)), 
-                                     np.cos((self.lon-refLon)*np.pi/180)[np.newaxis,:,:], axis=0), axis=0)
-        latWeight = np.cos((self.lat-refLat)*np.pi/180)[0]
+        lonWeight = np.max(np.append(np.zeros((1,t.size,self.map.npix)), 
+                                     np.cos((self.map.lonGrid-refLon)*np.pi/180)[np.newaxis,:,:], axis=0), axis=0)
+        latWeight = np.cos((self.map.latGrid-refLat)*np.pi/180)[0]
         return lonWeight*latWeight
     
     # Calculate Fp_apparent (used for making phasecurves)
@@ -241,68 +173,22 @@ class Planet(object):
             t = np.array(t).reshape(-1,1)
         
         weights = self.weight(t, 'SOP')
-        flux = self.Fout(T, bolo, wav)*self.pixArea
+        flux = self.Fout(T, bolo, wav)*self.map.pixArea*self.rad**2
         # used to remove wiggles from finite number of pixels coming in and out of view
-        weightsNormed = weights*(4*np.pi/self.npix)/np.pi
+        weightsNormed = weights*(4*np.pi/self.map.npix)/np.pi
         
         return np.sum(flux*weights, axis=1)/np.sum(weightsNormed, axis=1)
 
     # A Convenience Routine to Plot the Planet's Temperature Map
-    def showMap(self, tempMap, time=0):
-        current_cmap = matplotlib.cm.get_cmap('inferno')
-        current_cmap.set_bad(color='white')
-        if self.useHealpix:
-            im = hp.orthview(tempMap, flip='geo', cmap='inferno',
-                             rot=(self.SSP(time)[0].flatten(), 0, 0), return_projected_map=True)
-            plt.clf()
-            plt.imshow(im, cmap='inferno')
-            plt.xticks([])
-            plt.yticks([])
-            plt.setp(plt.gca().spines.values(), color='none')
-        else:
-            tempMap = tempMap.reshape((self.nside, int(2*self.nside+1)), order='F')
-            
-            ssp = self.SSP(time)[0].flatten()
-            dlon = 360/(self.nside*2+1)
-            lon = np.linspace(-180+dlon/2, 180-dlon/2, self.nside*2+1)
-            rotInd = -(np.where(np.abs(lon-ssp) < dlon/2+1e-6)[0][0]-(self.nside))
-            tempMap = np.roll(tempMap, rotInd, axis=1)
-            
-            plt.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90))
-            plt.xticks([-180,-90,0,90,180])
-            plt.yticks([-90,-45,0,45,90])
-            
-        cbar = plt.colorbar(orientation="horizontal",fraction=0.075)
-        cbar.set_label('Temperature (K)', fontsize='x-large')
-        
+    def showMap(self, tempMap, time=0):     
+        subStellarLon = self.SSP(time)[0].flatten()
+        self.map.set_map(tempMap)
+        self.map.plot_map(subStellarLon)
         return plt.gcf()
     
     # A Convenience Routine to Plot the Planet's Dissociation Map
     def showDissociation(self, tempMap, time=0):
-        current_cmap = matplotlib.cm.get_cmap('inferno')
-        current_cmap.set_bad(color='white')
-        if self.useHealpix:
-            im = hp.orthview(h2.dissFracApprox(tempMap)*100., flip='geo', cmap='inferno', min=0,
-                             rot=(self.SSP(time)[0].flatten(), 0, 0), return_projected_map=True)
-            plt.clf()
-            plt.imshow(im, cmap='inferno', vmin=0)
-            plt.xticks([])
-            plt.yticks([])
-            plt.setp(plt.gca().spines.values(), color='none')
-        else:
-            dissMap = h2.dissFracApprox(tempMap.reshape((self.nside, int(2*self.nside+1)), order='F'))*100.
-            
-            ssp = self.SSP(time)[0].flatten()
-            dlon = 360/(self.nside*2+1)
-            lon = np.linspace(-180+dlon/2, 180-dlon/2, self.nside*2+1)
-            rotInd = -(np.where(np.abs(lon-ssp) < dlon/2+1e-6)[0][0]-(self.nside))
-            dissMap = np.roll(dissMap, rotInd, axis=1)
-            
-            plt.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0)
-            plt.xticks([-180,-90,0,90,180])
-            plt.yticks([-90,-45,0,45,90])
-        
-        cbar = plt.colorbar(orientation="horizontal",fraction=0.075)
-        cbar.set_label('Dissociation Fraction (%)', fontsize='x-large')
-        
+        subStellarLon = self.SSP(time)[0].flatten()
+        self.map.set_map(tempMap)
+        self.map.plot_dissociation(subStellarLon)
         return plt.gcf()
