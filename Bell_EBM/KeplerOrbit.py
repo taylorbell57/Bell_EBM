@@ -8,18 +8,15 @@ import scipy.optimize
 
 class KeplerOrbit(object):
     """A Keplerian orbit.
-
+    
     Attributes:
         a (float): The semi-major axis in m.
         Porb (float): The orbital period in days.
-        inc (float): The orbial inclination
-                     (in degrees above face-on)
+        inc (float): The orbial inclination (in degrees above face-on)
         t0 (float): The linear ephemeris in days.
         e (float): The orbital eccentricity.
-        Omega (float): The longitude of ascending node
-                       (in degrees CCW from line-of-sight).
-        argp (float): The argument of periastron
-                      (in degrees CCW from Omega).
+        Omega (float): The longitude of ascending node (in degrees CCW from line-of-sight).
+        argp (float): The argument of periastron (in degrees CCW from Omega).
         m1 (float): The mass of body 1 in kg.
         m2 (float): The mass of body 2 in kg.
     
@@ -31,14 +28,11 @@ class KeplerOrbit(object):
         Args:
             a (float, optional): The semi-major axis in m.
             Porb (float, optional): The orbital period in days.
-            inc (float, optional): The orbial inclination
-                                   (in degrees above face-on)
+            inc (float, optional): The orbial inclination (in degrees above face-on)
             t0 (float, optional): The linear ephemeris in days.
             e (float, optional): The orbital eccentricity.
-            Omega (float, optional): The longitude of ascending node
-                                     (in degrees CCW from line-of-sight).
-            argp (float, optional): The argument of periastron
-                                    (in degrees CCW from Omega).
+            Omega (float, optional): The longitude of ascending node (in degrees CCW from line-of-sight).
+            argp (float, optional): The argument of periastron (in degrees CCW from Omega).
             m1 (float, optional): The mass of body 1 in kg.
             m2 (float, optional): The mass of body 2 in kg.
         
@@ -219,10 +213,8 @@ class KeplerOrbit(object):
         
         Returns:
             x (ndarray): The x coordinate (along line-of-sight) of body 2 with respect to body 1.
-            y (ndarray): The y coordinate (perpendicular to line-of-sight, in orbital planet)
-                         of body 2 with respect to body 1.
-            z (ndarray): The z coordinate (perpendicular to line-of-sight, above orbital planet)
-                         of body 2 with respect to body 1.
+            y (ndarray): The y coordinate (perpendicular to line-of-sight, in orbital planet) of body 2 with respect to body 1.
+            z (ndarray): The z coordinate (perpendicular to line-of-sight, above orbital planet) of body 2 with respect to body 1.
         
         """
         

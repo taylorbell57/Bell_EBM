@@ -16,26 +16,20 @@ class Planet(object):
     Attributes:
         a (float): The planet's semi-major axis in m.
         albedo (float): The planet's Bond albedo.
-        argobliq (float): The reference orbital angle used for the obliquity
-                          (in degrees from inferior conjunction).
-        argp (float): The planet's argument of periastron
-                      (in degrees CCW from Omega).
+        argobliq (float): The reference orbital angle used for the obliquity (in degrees from inferior conjunction).
+        argp (float): The planet's argument of periastron (in degrees CCW from Omega).
         C (float, optional): The planet's heat capacity in J/m^2/K.
         cp (float or callable): The planet's isobaric specific heat capacity in J/kg/K.
-        cpParams (:obj:iterable, optional): Any parameters to be passed to cp if
-                                            using the bell2018 LTE H2+H mix cp
+        cpParams (:obj:iterable, optional): Any parameters to be passed to cp if using the bell2018 LTE H2+H mix cp
         e (float): The planet's orbital eccentricity.
         g (float): The planet's surface gravity in m/s^2.
-        inc (float): The planet's orbial inclination
-                               (in degrees above face-on)
+        inc (float): The planet's orbial inclination (in degrees above face-on)
         map (:object:Map): The planet's temperature map.
         mass (float): The planet's mass in kg.
         mlDensity (float): The density of the planet's mixed layer.
         mlDepth (float): The depth of the planet's mixed layer.
-        obliq (float): The planet's obliquity (axial tilt)
-                       (in degrees toward star).
-        Omega (float): The planet's longitude of ascending node
-                       (in degrees CCW from line-of-sight).
+        obliq (float): The planet's obliquity (axial tilt) (in degrees toward star).
+        Omega (float): The planet's longitude of ascending node (in degrees CCW from line-of-sight).
         orbit (:object:KeplerOrbit): The planet's orbit.
         plType (str): The planet's composition.
         Porb (float): The planet's orbital period in days.
@@ -60,18 +54,13 @@ class Planet(object):
             Prot (float, optional): The planet's rotational period in days.
             vWind (float, optional): The planet's wind velocity in m/s.
             albedo (float, optional): The planet's Bond albedo.
-            inc (float, optional): The planet's orbial inclination
-                                   (in degrees above face-on)
+            inc (float, optional): The planet's orbial inclination (in degrees above face-on)
             t0 (float, optional): The planet's linear ephemeris in days.
             e (float, optional): The planet's orbital eccentricity.
-            Omega (float, optional): The planet's longitude of ascending node
-                                     (in degrees CCW from line-of-sight).
-            argp (float, optional): The planet's argument of periastron
-                                    (in degrees CCW from Omega).
-            obliq (float, optional): The planet's obliquity (axial tilt)
-                                     (in degrees toward star).
-            argobliq (float, optional): The reference orbital angle used for obliq
-                                        (in degrees from inferior conjunction).
+            Omega (float, optional): The planet's longitude of ascending node (in degrees CCW from line-of-sight).
+            argp (float, optional): The planet's argument of periastron (in degrees CCW from Omega).
+            obliq (float, optional): The planet's obliquity (axial tilt) (in degrees toward star).
+            argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
             nside (int, optional): A parameter that sets the resolution of the map.
             useHealpix (bool, optional): Whether the planet's map uses a healpix grid.
         
@@ -155,8 +144,7 @@ class Planet(object):
     def update(self):
         """Update the planet's properties
         
-        Used to propogate any manual changes to the planet's attributes through the other,
-        dependent attributes.
+        Used to propogate any manual changes to the planet's attributes through the other, dependent attributes.
         
         """
         
@@ -240,8 +228,7 @@ class Planet(object):
         
         Args:
             T (ndarray): The temperature (if None, use self.map.values).
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
-                                   or wavelength dependent (False).
+            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False.
         
         Returns:
@@ -264,8 +251,7 @@ class Planet(object):
     def weight(self, t, refPos='SSP', debug=False):
         """Calculate the weighting of map pixels.
         
-        Weight flux by visibility/illumination kernel, assuming the star/observer
-        are infinitely far away for now.
+        Weight flux by visibility/illumination kernel, assuming the star/observer are infinitely far away for now.
         
         Args:
             t (ndarray): The time in days.
@@ -295,14 +281,12 @@ class Planet(object):
     def Fp_vis(self, t, T=None, bolo=True, wav=4.5e-6, debug=False):
         """Calculate apparent outgoing planetary flux (used for making phasecurves).
         
-        Weight flux by visibility/illumination kernel, assuming the star/observer
-        are infinitely far away for now.
+        Weight flux by visibility/illumination kernel, assuming the star/observer are infinitely far away for now.
         
         Args:
             t (ndarray): The time in days.
             T (ndarray): The temperature (if None, use self.map.values).
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
-                                   or wavelength dependent (False).
+            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False
         
         Returns:

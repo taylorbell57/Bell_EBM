@@ -32,8 +32,7 @@ class Star(object):
         """Calculate the stellar flux for lightcurve normalization purposes.
         
         Args:
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
-                                   or wavelength dependent (False).
+            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
         
