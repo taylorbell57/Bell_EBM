@@ -10,8 +10,8 @@ Welcome to Bell_EBM's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-api/Bell_EBM
-api/modules
+   api/Bell_EBM
+   api/modules
 
 Indices and tables
 ==================
