@@ -130,18 +130,18 @@ class Planet(object):
             self.ProtSign = -1
         self.argobliq = argobliq           # degrees from t0
         self.t0 = t0                       # days
-        if self.Porb != None:
+        if self.Porb is not None:
             self.orbit = KeplerOrbit(a=self.a, Porb=self.Porb, inc=self.inc, t0=self.t0, 
                                      e=self.e, Omega=self.Omega, argp=self.argp, m2=self.mass)
         else:
             self.orbit = None
         
         #Rotation Rate Attributes
-        if Prot == None:
+        if Prot is None:
             self.Prot_input = self.Porb
         else:
             self.Prot_input = Prot               # days
-        if self.Prot_input == None:
+        if self.Prot_input is None:
             self.vRot = 0
         else:
             self.vRot = 2*np.pi*self.rad/(self.Prot_input*24*3600) # m/s
@@ -172,17 +172,17 @@ class Planet(object):
         else:
             self.C = self.mlDepth*self.mlDensity*self.cp
         
-        if self.Porb != None and self.Prot==None:
+        if self.Porb is not None and self.Prot is None:
             self.Prot_input = self.Porb
         
-        if self.Prot_input != None:
+        if self.Prot_input is not None:
             self.vRot = 2*np.pi*self.rad/(self.Prot_input*24*3600) # m/s
             if self.vWind == 0:
                 self.Prot = self.Prot_input
             else:
                 self.Prot = 2*np.pi*self.rad/((self.vWind+self.vRot)*(24*3600))
         
-        if self.Porb != None:
+        if self.Porb is not None:
             self.orbit = KeplerOrbit(a=self.a, Porb=self.Porb, inc=self.inc, t0=self.t0, 
                                      e=self.e, Omega=self.Omega, argp=self.argp, m2=self.mass)
     
@@ -206,7 +206,7 @@ class Planet(object):
             t = t.reshape(-1)
         else:
             tshape = t.shape
-        trueAnom = (self.orbit.get_trueAnomaly(t)*180/np.pi)
+        trueAnom = (self.orbit.trueAnomaly(t)*180/np.pi)
         trueAnom[trueAnom<0] += 360
         sspLon = (trueAnom-t/self.Prot*360)
         sspLon = sspLon%180+(-180)*(np.rint(np.floor(sspLon%360/180) > 0))
@@ -235,11 +235,11 @@ class Planet(object):
         sopLat = 90-self.inc-self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
         return sopLon, sopLat
 
-    def Fout(self, T, bolo=True, wav=1e-6):
+    def Fout(self, T=None, bolo=True, wav=1e-6):
         """Calculate the instantaneous total outgoing flux.
         
         Args:
-            T (ndarray): The temperature.
+            T (ndarray): The temperature (if None, use self.map.values).
             bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
                                    or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False.
@@ -249,7 +249,9 @@ class Planet(object):
         
         """
         
-        if type(T)!=np.ndarray:
+        if T is None:
+            T = self.map.values
+        elif type(T)!=np.ndarray:
             T = np.array([T])
         
         if bolo:
@@ -290,7 +292,7 @@ class Planet(object):
         latWeight = np.cos((self.map.latGrid-refLat)*np.pi/180)[0]
         return lonWeight*latWeight
     
-    def Fp_vis(self, t, T, bolo=True, wav=4.5e-6, debug=False):
+    def Fp_vis(self, t, T=None, bolo=True, wav=4.5e-6, debug=False):
         """Calculate apparent outgoing planetary flux (used for making phasecurves).
         
         Weight flux by visibility/illumination kernel, assuming the star/observer
@@ -298,7 +300,7 @@ class Planet(object):
         
         Args:
             t (ndarray): The time in days.
-            T (ndarray): The temperature.
+            T (ndarray): The temperature (if None, use self.map.values).
             bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
                                    or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False
@@ -307,6 +309,9 @@ class Planet(object):
             Fout (ndarray): The apparent emitted flux. Has shape (t.size, self.map.npix).
         
         """
+        
+        if T is None:
+            T = self.map.values
         
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array(t).reshape(-1,1)
@@ -318,11 +323,11 @@ class Planet(object):
         
         return np.sum(flux*weights, axis=1)/np.sum(weightsNormed, axis=1)
 
-    def showMap(self, tempMap, time=0):
+    def showMap(self, tempMap=None, time=None):
         """A convenience routine to plot the planet's temperature map.
         
         Args:
-            tempMap (ndarray): The temperature map.
+            tempMap (ndarray): The temperature map (if None, use self.map.values).
             time (float, optional): The time corresponding to the map used to de-rotate the map.
         
         Returns:
@@ -330,16 +335,24 @@ class Planet(object):
         
         """
         
-        subStellarLon = self.SSP(time)[0].flatten()
-        self.map.set_map(tempMap)
-        self.map.plot_map(subStellarLon)
-        return plt.gcf()
+        if tempMap is None:
+            if time is None:
+                subStellarLon = self.SSP(self.map.time)[0].flatten()
+            else:
+                subStellarLon = self.SSP(time)[0].flatten()
+        else:
+            self.map.set_values(tempMap, time)
+            if time is not None:
+                subStellarLon = self.SSP(time)[0].flatten()
+            else:
+                subStellarLon = None
+        return self.map.plot_map(subStellarLon)
     
-    def showDissociation(self, tempMap, time=0):
+    def showDissociation(self, tempMap=None, time=None):
         """A convenience routine to plot the planet's H2 dissociation map.
         
         Args:
-            tempMap (ndarray): The temperature map.
+            tempMap (ndarray, optional): The temperature map (if None, use self.map.values).
             time (float, optional): The time corresponding to the map used to de-rotate the map.
         
         Returns:
@@ -347,7 +360,16 @@ class Planet(object):
         
         """
         
-        subStellarLon = self.SSP(time)[0].flatten()
-        self.map.set_map(tempMap)
+        if tempMap is None:
+            if time is None:
+                subStellarLon = self.SSP(self.map.time)[0].flatten()
+            else:
+                subStellarLon = self.SSP(time)[0].flatten()
+        else:
+            self.map.set_values(tempMap, time)
+            if time is not None:
+                subStellarLon = self.SSP(time)[0].flatten()
+            else:
+                subStellarLon = None
         self.map.plot_dissociation(subStellarLon)
         return plt.gcf()

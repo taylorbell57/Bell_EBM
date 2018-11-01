@@ -4,4 +4,4 @@
 
 from Star import Star
 from Planet import Planet
-from StarPlanetSystem import StarPlanetSystem
+from StarPlanetSystem import System

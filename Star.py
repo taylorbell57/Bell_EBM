@@ -45,7 +45,7 @@ class Star(object):
         if bolo:
             return const.sigma_sb.value*self.teff**4 * np.pi*self.rad**2
         else:
-            if tBright==None:
+            if tBright is None:
                 tBright = self.teff
             a = (2*const.h.value*const.c.value**2/wav**5)
             b = (const.h.value*const.c.value)/(wav*const.k_B.value)

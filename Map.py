@@ -73,7 +73,7 @@ class Map(object):
             self.latGrid = lat.reshape(1, -1)
             self.lonGrid = lon.reshape(1, -1)
         
-        if values!=None:
+        if values is not None:
             values = np.array([values]).reshape(-1)
             if values.size < self.npix:
                 print('Error: Too few map values ('+str(values.size)+'!='+str(self.npix)+')')
@@ -103,11 +103,11 @@ class Map(object):
             print('Error: Too many map values ('+str(values.size)+' > '+str(self.npix)+')')
             return None
         else:
-            if time!=None:
+            if time is not None:
                 self.time = time
             self.values = values
     
-    def plot_map(self, refLon=0):
+    def plot_map(self, refLon=None):
         """A convenience routine to plot the temperature map
         
         Args:
@@ -119,9 +119,10 @@ class Map(object):
         """
         
         if not self.useHealpix:
-            rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2+1e-6)[0][0]-(self.nside))
             tempMap = self.values.reshape((self.nside, int(2*self.nside)), order='F')
-            tempMap = np.roll(tempMap, rollCount, axis=1)
+            if refLon is not None:
+                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2+1e-6)[0][0]-(self.nside))
+                tempMap = np.roll(tempMap, rollCount, axis=1)
 
             im = plt.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90))
             plt.xlabel(r'Longitude', fontsize='large')
@@ -134,6 +135,8 @@ class Map(object):
             import healpy as hp
             current_cmap = matplotlib.cm.get_cmap('inferno')
             current_cmap.set_bad(color='white')
+            if refLon is None:
+                refLon = 0
             im = hp.orthview(self.values, flip='geo', cmap='inferno', min=0,
                              rot=(refLon, 0, 0), return_projected_map=True, cbar=None)
             plt.clf()
@@ -147,7 +150,7 @@ class Map(object):
         cbar.set_label('Temperature (K)', fontsize='x-large')
         return plt.gcf()
     
-    def plot_dissociation(self, refLon=0):
+    def plot_dissociation(self, refLon=None):
         """A convenience routine to plot the H2 dissociation map.
         
         Args:
@@ -159,9 +162,10 @@ class Map(object):
         """
         
         if not self.useHealpix:
-            rollCount = -(np.where(np.abs(self.lon.flatten()-refLon) < self.dlon/2+1e-6)[0][0]-(self.nside))
             dissMap = h2.dissFracApprox(self.values.reshape((self.nside, int(2*self.nside)), order='F'))*100.
-            dissMap = np.roll(dissMap, rollCount, axis=1)
+            if refLon is not None:
+                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2+1e-6)[0][0]-(self.nside))
+                dissMap = np.roll(dissMap, rollCount, axis=1)
 
             plt.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0)
             plt.xlabel(r'Longitude', fontsize='large')
@@ -174,6 +178,8 @@ class Map(object):
             import healpy as hp
             current_cmap = matplotlib.cm.get_cmap('inferno')
             current_cmap.set_bad(color='white')
+            if refLon is None:
+                refLon = 0
             im = hp.orthview(h2.dissFracApprox(self.values)*100., flip='geo', cmap='inferno', min=0,
                              rot=(refLon, 0, 0), return_projected_map=True, cbar=None)
             plt.clf()

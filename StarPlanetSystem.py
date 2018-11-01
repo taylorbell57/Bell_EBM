@@ -30,24 +30,24 @@ class System(object):
 
         """
         
-        if star == None:
+        if star is None:
             self.star = Star()
         else:
             self.star = star
         
-        if planet == None:
+        if planet is None:
             self.planet = Planet()
         else:
             self.planet = planet
             
         updatePlanet = False
-        if self.planet.Porb == None:
+        if self.planet.Porb is None:
             self.planet.orbit = KeplerOrbit(t0=self.planet.t0, a=self.planet.a, inc=self.planet.inc,
                                          e=self.planet.e, Omega=self.planet.Omega, argp=self.planet.argp,
                                          m1=self.star.mass, m2=self.planet.mass)
             self.planet.Porb = self.planet.orbit.Porb
             updatePlanet = True
-        if self.planet.Prot_input == None:
+        if self.planet.Prot_input is None:
             self.planet.Prot_input = self.planet.Porb
             self.planet.Prot = self.planet.Porb
             updatePlanet = True
@@ -63,7 +63,7 @@ class System(object):
             
         """
         
-        return (self.planet.orbit.get_peri_time()/self.planet.Porb) % 1
+        return (self.planet.orbit.peri_time()/self.planet.Porb) % 1
     
     def get_phase_transit(self):
         """Get the orbital phase of transit.
@@ -84,7 +84,7 @@ class System(object):
             
         """
         
-        return (self.planet.orbit.get_ecl_time()/self.planet.Porb) % 1
+        return (self.planet.orbit.ecl_time()/self.planet.Porb) % 1
     
     def get_phase(self, t):
         """Get the orbital phase.
@@ -114,7 +114,7 @@ class System(object):
             
         """
         
-        return self.planet.orbit.get_xyz(t)
+        return self.planet.orbit.xyz(t)
     
     def distance(self, t):
         """Calculate the instantaneous separation between star and planet.
@@ -129,7 +129,7 @@ class System(object):
         
         if type(t)!=np.ndarray or len(t.shape)!=1:
             t = np.array([t]).reshape(-1)
-        return self.planet.orbit.get_distance(t).reshape(-1,1)
+        return self.planet.orbit.distance(t).reshape(-1,1)
     
     def Firr(self, t):
         """Calculate the instantaneous irradiation.
@@ -179,10 +179,13 @@ class System(object):
         
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array([t]).reshape(-1,1)
-        if np.any(T == None):
+        
+        if T is None:
             T = self.planet.map.values
+        
         if len(T.shape)==1:
             T = T.reshape(1,-1)
+        
         return self.planet.Fp_vis(t, T, bolo, wav, debug=debug)/self.star.Fstar(bolo, tStarBright, wav)
     
     def invert_lc(self, fp_fstar, bolo=True, tStarBright=None, wav=4.5e-6):
@@ -203,7 +206,7 @@ class System(object):
         if bolo:
             return (fp_fstar*self.star.Fstar(bolo=True)/(np.pi*self.planet.rad**2)/const.sigma_sb.value)**0.25
         else:
-            if tStarBright==None:
+            if tStarBright is None:
                 tStarBright = self.star.teff
             a = const.h.value*const.c.value/(const.k_B.value*wav)
             b = np.expm1(a/tStarBright)
@@ -229,7 +232,7 @@ class System(object):
         if not callable(self.planet.cp):
             C = self.planet.C
         else:
-            if self.planet.cpParams == None:
+            if self.planet.cpParams is None:
                 C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T))
             else:
                 C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams))
@@ -253,11 +256,11 @@ class System(object):
             
         """
         
-        if np.any(T0 == None):
+        if T0 is None:
             T0 = self.planet.map.values
-        if t1==None:
+        if t1 is None:
             t1 = t0+self.planet.Porb
-        if dt==None:
+        if dt is None:
             dt = self.planet.Porb/100.
         
         r = scipy.integrate.ode(self.ODE)
@@ -294,11 +297,12 @@ class System(object):
         
         return times, maps
 
-    def plot_lightcurve(self, t, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
+    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
         """A convenience plotting routine to show the planet's phasecurve.
         
         Args:
-            t (ndarray): The time in days with shape (t.size,1).
+            t (ndarray, optional): The time in days with shape (t.size,1). If none, use
+                                   [self.planet.t0,self.planet.t0+self.planet.Porb].
             T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix)
                                    if the map is constant or (t.size,self.planet.map.npix). If None,
                                    use self.planet.map.values instead.
@@ -312,19 +316,27 @@ class System(object):
             
         """
         
-        if np.any(T == None):
+        if t is None:
+            # Use Prot instead as map would rotate
+            t = self.planet.t0+np.linspace(0, self.planet.Prot, 1000)
+            x = t/self.planet.Prot - np.rint(t[0]/self.planet.Prot)
+        else:
+            x = t/self.planet.Porb - np.rint(t[0]/self.planet.Porb)
+        
+        if T is None:
             T = self.planet.map.values.reshape(1,-1)
+        elif type(T)!=np.ndarray:
+            T = np.array([T]).reshape(1,-1)
+        elif len(T.shape)==1:
+            T = T.reshape(1,-1)
         
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav)*1e6
         
-        x = t/self.planet.Porb - np.rint(t[0]/self.planet.Porb)
         t = np.append(t[x>=0], t[x<0])
+        lc = np.append(lc[x>=0], lc[x<0])
         x = np.append(x[x>=0], x[x<0]+1)
         if self.planet.e != 0:
             x *= self.planet.Porb
-        if len(lc.shape)==2 and lc.shape[0]!=1:
-            lc = np.append(lc[x>=0], lc[x<0])
-        
         
         plt.plot(x, lc)
         plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label='Eclipse')
@@ -343,11 +355,12 @@ class System(object):
         plt.setp(plt.gca().get_yticklabels(), fontsize='x-large')
         return plt.gcf()
     
-    def plot_tempcurve(self, t, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
+    def plot_tempcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
         """A convenience plotting routine to show the planet's phasecurve in units of temperature.
         
         Args:
-            t (ndarray): The time in days with shape (t.size,1).
+            t (ndarray, optional): The time in days with shape (t.size,1). If none, use
+                                   [self.planet.t0,self.planet.t0+self.planet.Porb].
             T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix)
                                    if the map is constant or (t.size,self.planet.map.npix). If None,
                                    use self.planet.map.values instead.
@@ -361,15 +374,28 @@ class System(object):
             
         """
         
-        x = t/self.planet.Porb - np.rint(t[0]/self.planet.Porb)
-        t = np.append(t[x>=0], t[x<0])
-        T = np.append(T[x>=0], T[x<0], axis=0)
-        x = np.append(x[x>=0], x[x<0]+1)
-        if self.planet.e != 0:
-            x *= self.planet.Porb
+        if t is None:
+            # Use Prot instead as map would rotate
+            t = self.planet.t0+np.linspace(0, self.planet.Prot, 1000)
+            x = t/self.planet.Prot - np.rint(t[0]/self.planet.Prot)
+        else:
+            x = t/self.planet.Porb - np.rint(t[0]/self.planet.Porb)
+        
+        if T is None:
+            T = self.planet.map.values.reshape(1,-1)
+        elif type(T)!=np.ndarray:
+            T = np.array([T]).reshape(1,-1)
+        elif len(T.shape)==1:
+            T = T.reshape(1,-1)
         
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav)
         tc = self.invert_lc(lc, bolo=bolo, tStarBright=tStarBright, wav=wav)
+        
+        t = np.append(t[x>=0], t[x<0])
+        tc = np.append(tc[x>=0], tc[x<0])
+        x = np.append(x[x>=0], x[x<0]+1)
+        if self.planet.e != 0:
+            x *= self.planet.Porb
         
         plt.plot(x, tc)
         plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label='Eclipse')

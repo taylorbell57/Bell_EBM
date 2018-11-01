@@ -53,7 +53,7 @@ class KeplerOrbit(object):
         self.m1 = m1
         self.m2 = m2
         
-        if Porb == None:
+        if Porb is None:
             self.Porb = self.period()
         else:
             self.Porb = Porb
