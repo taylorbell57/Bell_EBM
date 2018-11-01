@@ -4,9 +4,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.constants as const
-import healpy as hp
 import scipy.integrate
-import time as timepk
 
 from Star import *
 from Planet import *

@@ -13,7 +13,7 @@ import H2_Dissociation_Routines as h2
 
 class Planet(object):
     def __init__(self, plType='rock', rad=1, mass=1, a=0.03, Porb=None, Prot=None, vWind=0,
-                 e=0, Omega=270, inc=90, argp=90, t0=0, albedo=0, useHealpix=True, nside=5):
+                 e=0, Omega=270, inc=90, argp=90, obliq=0, argobliq=0, t0=0, albedo=0, useHealpix=True, nside=5):
         
         #Planet Attributes
         self.plType = plType
@@ -90,11 +90,17 @@ class Planet(object):
                 
         #Orbital Attributes
         self.a = a*const.au.value          # m
-        self.Porb = Porb                   # days (if None, will be set to Kepler expectation)
+        self.Porb = Porb                   # days (if None, will be set to Kepler expectation when loaded into system)
         self.e = e                         # None
-        self.Omega = Omega                 # degrees
-        self.inc = inc                     # degrees
-        self.argp = argp                   # degrees 
+        self.Omega = Omega                 # degrees ccw from line-of-sight
+        self.inc = inc                     # degrees above face-on
+        self.argp = argp                   # degrees ccw from Omega
+        self.obliq = obliq                 # degrees toward star
+        if self.obliq <= 90:
+            self.ProtSign = 1
+        else:
+            self.ProtSign = -1
+        self.argobliq = argobliq           # degrees from t0
         self.t0 = t0                       # days
         if self.Porb != None:
             self.orbit = KeplerOrbit(Porb=self.Porb, t0=self.t0, a=self.a,
@@ -182,25 +188,25 @@ class Planet(object):
                                   inc=self.inc, e=self.e, Omega=self.Omega,
                                   argp=self.argp)
     
-    # Calculate the sub-stellar longitude
+    # Calculate the sub-stellar longitude and latitude
     def SSP(self, t):
         if type(t)!=np.ndarray or len(t.shape)!=1:
             t = np.array([t]).reshape(-1)
         trueAnom = (self.orbit.get_trueAnomaly(t)*180/np.pi)
         trueAnom[trueAnom<0] += 360
-
         ssp = (trueAnom-t/self.Prot*360)
         ssp = ssp%180+(-180)*(np.rint(np.floor(ssp%360/180) > 0))
-        return ssp.reshape(-1,1)
+        sspLat = self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
+        return ssp.reshape(-1,1), sspLat.reshape(-1,1)
 
-    # Calculate the sub-observer longitude
+    # Calculate the sub-observer longitude and latitude
     def SOP(self, t):
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array(t).reshape(-1,1)
-        
         sop = 180-(t/self.Prot)*360
         sop = sop%180+(-180)*(np.rint(np.floor(sop%360/180) > 0))
-        return sop
+        sopLat = 90-self.inc-self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
+        return sop, sopLat
 
     # Calculate the instantaneous total outgoing flux
     def Fout(self, T, bolo=True, wav=1e-6):
@@ -212,13 +218,13 @@ class Planet(object):
             return a/np.expm1(b/T)
         
     # Weight flux by visibility/illumination kernel (assuming the host star is infinitely far away for now)
-    def weight(self, t, refLon='SSP', refLat=0):
-        if refLon == 'SSP':
-            refLon = self.SSP(t)
-        elif refLon == 'SOP':
-            refLon = self.SOP(t)
-        elif not isinstance(refLon, numbers.Number) or type(refLon)==np.ndarray:
-            print('Reference longitude "'+str(refLon)+'" not understood!')
+    def weight(self, t, refPos='SSP'):
+        if refPos == 'SSP':
+            refLon, refLat = self.SSP(t)
+        elif refPos == 'SOP':
+            refLon, refLat = self.SOP(t)
+        else:
+            print('Reference point "'+str(refPos)+'" not understood!')
             return False
         
         if type(t)!=np.ndarray or len(t.shape)==1:
@@ -231,12 +237,10 @@ class Planet(object):
     
     # Calculate Fp_apparent (used for making phasecurves)
     def Fp_vis(self, t, T, bolo=True, wav=4.5e-6):
-        refLat = (90-self.inc)
-
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array(t).reshape(-1,1)
         
-        weights = self.weight(t, 'SOP', refLat)
+        weights = self.weight(t, 'SOP')
         flux = self.Fout(T, bolo, wav)*self.pixArea
         # used to remove wiggles from finite number of pixels coming in and out of view
         weightsNormed = weights*(4*np.pi/self.npix)/np.pi
@@ -249,7 +253,7 @@ class Planet(object):
         current_cmap.set_bad(color='white')
         if self.useHealpix:
             im = hp.orthview(tempMap, flip='geo', cmap='inferno',
-                             rot=(self.SSP(time).flatten(), 0, 0), return_projected_map=True)
+                             rot=(self.SSP(time)[0].flatten(), 0, 0), return_projected_map=True)
             plt.clf()
             plt.imshow(im, cmap='inferno')
             plt.xticks([])
@@ -258,7 +262,7 @@ class Planet(object):
         else:
             tempMap = tempMap.reshape((self.nside, int(2*self.nside+1)), order='F')
             
-            ssp = self.SSP(time).flatten()
+            ssp = self.SSP(time)[0].flatten()
             dlon = 360/(self.nside*2+1)
             lon = np.linspace(-180+dlon/2, 180-dlon/2, self.nside*2+1)
             rotInd = -(np.where(np.abs(lon-ssp) < dlon/2+1e-6)[0][0]-(self.nside))
@@ -279,7 +283,7 @@ class Planet(object):
         current_cmap.set_bad(color='white')
         if self.useHealpix:
             im = hp.orthview(h2.dissFracApprox(tempMap)*100., flip='geo', cmap='inferno', min=0,
-                             rot=(self.SSP(time).flatten(), 0, 0), return_projected_map=True)
+                             rot=(self.SSP(time)[0].flatten(), 0, 0), return_projected_map=True)
             plt.clf()
             plt.imshow(im, cmap='inferno', vmin=0)
             plt.xticks([])
@@ -288,7 +292,7 @@ class Planet(object):
         else:
             dissMap = h2.dissFracApprox(tempMap.reshape((self.nside, int(2*self.nside+1)), order='F'))*100.
             
-            ssp = self.SSP(time).flatten()
+            ssp = self.SSP(time)[0].flatten()
             dlon = 360/(self.nside*2+1)
             lon = np.linspace(-180+dlon/2, 180-dlon/2, self.nside*2+1)
             rotInd = -(np.where(np.abs(lon-ssp) < dlon/2+1e-6)[0][0]-(self.nside))
