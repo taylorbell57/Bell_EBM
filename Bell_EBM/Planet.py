@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-01
+# Last Update: 2018-11-02
 
 import numpy as np
 import matplotlib
@@ -202,7 +202,7 @@ class Planet(object):
         sspLat = self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
         return sspLon.reshape(tshape), sspLat.reshape(tshape)
 
-    def SOP(self, t, debug=False):
+    def SOP(self, t):
         """Calculate the sub-observer longitude and latitude.
         
         Args:
@@ -218,9 +218,6 @@ class Planet(object):
         if type(t)!=np.ndarray:
             t = np.array([t])
         sopLon = 180-(t/self.Prot)*360
-        if debug:
-            print(type(sopLon))
-            print(np.floor(sopLon))
         sopLon = sopLon%180+(-180)*(np.rint(np.floor(sopLon%360/180) > 0))
         sopLat = 90-self.inc-self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
         return sopLon, sopLat
@@ -251,7 +248,7 @@ class Planet(object):
             b = (const.h.value*const.c.value)/(wav*const.k_B.value)
             return a/np.expm1(b/T)
         
-    def weight(self, t, refPos='SSP', debug=False):
+    def weight(self, t, refPos='SSP'):
         """Calculate the weighting of map pixels.
         
         Weight flux by visibility/illumination kernel, assuming the star/observer are infinitely far away for now.
@@ -271,7 +268,7 @@ class Planet(object):
         if refPos == 'SSP':
             refLon, refLat = self.SSP(t)
         elif refPos == 'SOP':
-            refLon, refLat = self.SOP(t, debug=debug)
+            refLon, refLat = self.SOP(t)
         else:
             print('Reference point "'+str(refPos)+'" not understood!')
             return False
@@ -281,7 +278,7 @@ class Planet(object):
         latWeight = np.cos((self.map.latGrid-refLat)*np.pi/180)[0]
         return lonWeight*latWeight
     
-    def Fp_vis(self, t, T=None, bolo=True, wav=4.5e-6, debug=False):
+    def Fp_vis(self, t, T=None, bolo=True, wav=4.5e-6):
         """Calculate apparent outgoing planetary flux (used for making phasecurves).
         
         Weight flux by visibility/illumination kernel, assuming the star/observer are infinitely far away for now.
@@ -304,9 +301,9 @@ class Planet(object):
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array(t).reshape(-1,1)
         
-        weights = self.weight(t, 'SOP', debug=debug)
+        weights = self.weight(t, 'SOP')
         flux = self.Fout(T, bolo, wav)*self.map.pixArea*self.rad**2
-        # used to remove wiggles from finite number of pixels coming in and out of view
+        # used to try to remove wiggles from finite number of pixels coming in and out of view
         weightsNormed = weights*(4*np.pi/self.map.npix)/np.pi
         
         return np.sum(flux*weights, axis=1)/np.sum(weightsNormed, axis=1)

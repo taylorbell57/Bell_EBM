@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-01
+# Last Update: 2018-11-02
 # Based on the work presented in:
 # Bell, T. J., & Cowan, N. B. (2018). Increased Heat Transport in Ultra-hot Jupiter Atmospheres through H2 Dissociation and Recombination. The Astrophysical Journal Letters, 857(2), L20.
 

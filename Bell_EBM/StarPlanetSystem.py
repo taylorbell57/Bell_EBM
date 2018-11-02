@@ -1,10 +1,11 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-01
+# Last Update: 2018-11-02
 
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.constants as const
 import scipy.integrate
+import warnings
 
 from .Star import Star
 from .Planet import Planet
@@ -97,7 +98,7 @@ class System(object):
             
         """
         
-        return ((t-self.planet.t0)/self.Porb) % 1
+        return ((t-self.planet.t0)/self.planet.Porb) % 1
     
     def get_xyzPos(self, t):
         """Get the x,y,z coordinate(s) of the planet.
@@ -159,7 +160,7 @@ class System(object):
             t = np.array([t]).reshape(-1,1)
         return self.Firr(t)*self.planet.weight(t)
 
-    def lightcurve(self, t, T=None, bolo=True, tStarBright=None, wav=4.5e-6, debug=False):
+    def lightcurve(self, t, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
         """Calculate the planet's lightcurve (ignoring any occultations).
         
         Args:
@@ -186,7 +187,7 @@ class System(object):
         if len(T.shape)==1:
             T = T.reshape(1,-1)
         
-        return self.planet.Fp_vis(t, T, bolo, wav, debug=debug)/self.star.Fstar(bolo, tStarBright, wav)
+        return self.planet.Fp_vis(t, T, bolo, wav)/self.star.Fstar(bolo, tStarBright, wav)
     
     def invert_lc(self, fp_fstar, bolo=True, tStarBright=None, wav=4.5e-6):
         """Invert the fp/fstar phasecurve into an apparent temperature phasecurve.
@@ -210,7 +211,7 @@ class System(object):
                 tStarBright = self.star.teff
             a = const.h.value*const.c.value/(const.k_B.value*wav)
             b = np.expm1(a/tStarBright)
-            c = 1  +  b/(fp_fstar/(self.planet.rad/self.star.rad**2))
+            c = 1  +  b/(fp_fstar/(self.planet.rad/self.star.rad)**2)
             return a*np.log(c)**-1
     
     def ODE(self, t, T):
@@ -269,11 +270,16 @@ class System(object):
             print('Starting Run')
         times = np.array([t0]).reshape(1,1)
         maps = np.array([T0]).reshape(1,-1)
-        while r.successful() and r.t <= t1-dt:
-            times = np.append(times, np.array(r.t+dt).reshape(1,1), axis=0)
-            maps = np.append(maps, np.max(np.append(np.zeros((self.planet.map.npix,1)),
-                                          r.integrate(r.t+dt).reshape(-1,1), axis=1), axis=1).reshape(1,-1),
-                             axis=0)
+        
+        with warnings.catch_warnings():
+            # Catch occasional, safe to ignore, and annoying warning
+            warnings.filterwarnings('ignore', 'The iteration is not making good progress')
+            
+            while r.successful() and r.t <= t1-dt:
+                times = np.append(times, np.array(r.t+dt).reshape(1,1), axis=0)
+                maps = np.append(maps, np.max(np.append(np.zeros((self.planet.map.npix,1)),
+                                              r.integrate(r.t+dt).reshape(-1,1), axis=1), axis=1).reshape(1,-1),
+                                 axis=0)
         
         if len(times) < np.floor((t1-t0)/dt):
             if verbose:
@@ -281,11 +287,16 @@ class System(object):
             dt /= 10
             times = np.array([t0]).reshape(1,1)
             maps = np.array([T0]).reshape(1,-1)
-            while r.successful() and r.t <= t1-dt:
-                times = np.append(times, np.array(r.t+dt).reshape(1,1), axis=0)
-                maps = np.append(maps, np.max(np.append(np.zeros((self.planet.map.npix,1)),
-                                              r.integrate(r.t+dt).reshape(-1,1), axis=1), axis=1).reshape(1,-1),
-                                 axis=0)
+            
+            with warnings.catch_warnings():
+                # Catch occasional, safe to ignore, and annoying warning
+                warnings.filterwarnings('ignore', 'The iteration is not making good progress')
+                
+                while r.successful() and r.t <= t1-dt:
+                    times = np.append(times, np.array(r.t+dt).reshape(1,1), axis=0)
+                    maps = np.append(maps, np.max(np.append(np.zeros((self.planet.map.npix,1)),
+                                                  r.integrate(r.t+dt).reshape(-1,1), axis=1), axis=1).reshape(1,-1),
+                                     axis=0)
 
         if len(times) < np.floor((t1-t0)/dt):
             print('Failed to run the model!')
@@ -330,6 +341,9 @@ class System(object):
             T = T.reshape(1,-1)
         
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav)*1e6
+
+        t = t.flatten()
+        x = x.flatten()
         
         t = np.append(t[x>=0], t[x<0])
         lc = np.append(lc[x>=0], lc[x<0])
@@ -340,7 +354,7 @@ class System(object):
         plt.plot(x, lc)
         plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label='Eclipse')
         if self.planet.e != 0 and self.get_phase_eclipse()!=self.get_phase_periastron():
-            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='--', label='Periastron')
+            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='-.', label='Periastron')
 
         plt.legend(loc=8, bbox_to_anchor=(0.5,1), fontsize='x-large', ncol=2)
         plt.ylabel(r'$F_p/F_*$ (ppm)', fontsize='xx-large')
@@ -390,6 +404,9 @@ class System(object):
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav)
         tc = self.invert_lc(lc, bolo=bolo, tStarBright=tStarBright, wav=wav)
         
+        t = t.flatten()
+        x = x.flatten()
+        
         t = np.append(t[x>=0], t[x<0])
         tc = np.append(tc[x>=0], tc[x<0])
         x = np.append(x[x>=0], x[x<0]+1)
@@ -399,7 +416,7 @@ class System(object):
         plt.plot(x, tc)
         plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label='Eclipse')
         if self.planet.e != 0 and self.get_phase_eclipse()!=self.get_phase_periastron():
-            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='--', label='Periastron')
+            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='-.', label='Periastron')
 
         plt.legend(loc=8, bbox_to_anchor=(0.5,1), fontsize='x-large', ncol=2)
         if bolo:
