@@ -56,7 +56,7 @@ class KeplerOrbit(object):
         """Find the keplerian orbital period.
         
         Returns:
-            period (float): The keplerian orbital period.
+            float: The keplerian orbital period.
         
         """
         
@@ -66,7 +66,7 @@ class KeplerOrbit(object):
         """Get the mean motion.
         
         Returns:
-            n (float): The mean motion in radians.
+            float: The mean motion in radians.
             
         """
         
@@ -79,7 +79,7 @@ class KeplerOrbit(object):
             ta (ndarray): The true anomaly in radians.
         
         Returns:
-            ea (ndarray): The eccentric anomaly in radians.
+            ndarray: The eccentric anomaly in radians.
         
         """
         
@@ -92,7 +92,7 @@ class KeplerOrbit(object):
             ea (ndarray): The eccentric anomaly in radians.
         
         Returns:
-            ma (ndarray): The mean anomaly in radians.
+            ndarray: The mean anomaly in radians.
         
         """
         
@@ -105,7 +105,7 @@ class KeplerOrbit(object):
             ta (ndarray): The true anomaly in radians.
         
         Returns:
-            ma (ndarray): The mean anomaly in radians.
+            ndarray: The mean anomaly in radians.
         
         """
         
@@ -115,7 +115,7 @@ class KeplerOrbit(object):
         """Get the time of periastron.
         
         Returns:
-           tperi (float): The time of periastron.
+           float: The time of periastron.
            
         """
         
@@ -125,7 +125,7 @@ class KeplerOrbit(object):
         """Get the time of transit.
         
         Returns:
-           t0 (float): The time of transit.
+           float: The time of transit.
            
         """
         
@@ -135,7 +135,7 @@ class KeplerOrbit(object):
         """Get the time of secondary eclipse.
         
         Returns:
-           t0 (float): The time of secondary eclipse.
+           float: The time of secondary eclipse.
            
         """
         
@@ -148,7 +148,7 @@ class KeplerOrbit(object):
             t (ndarray): The time in days.
         
         Returns:
-            ma (ndarray): The mean anomaly in radians.
+            ndarray: The mean anomaly in radians.
         
         """
         
@@ -162,7 +162,7 @@ class KeplerOrbit(object):
             xtol (float): tolarance on error in eccentric anomaly.
         
         Returns:
-            ea (ndarray): The eccentric anomaly in radians.
+            ndarray: The eccentric anomaly in radians.
         
         """
         
@@ -183,7 +183,7 @@ class KeplerOrbit(object):
             xtol (float): tolarance on error in eccentric anomaly (calculated along the way).
         
         Returns:
-            ta (ndarray): The true anomaly in radians.
+            ndarray: The true anomaly in radians.
         
         """
         
@@ -197,7 +197,7 @@ class KeplerOrbit(object):
             xtol (float): tolarance on error in eccentric anomaly (calculated along the way).
         
         Returns:
-            distance (ndarray): The separation between the two bodies.
+            ndarray: The separation between the two bodies.
         
         """
         
@@ -212,9 +212,11 @@ class KeplerOrbit(object):
             xtol (float): tolarance on error in eccentric anomaly (calculated along the way).
         
         Returns:
-            x (ndarray): The x coordinate (along line-of-sight) of body 2 with respect to body 1.
-            y (ndarray): The y coordinate (perpendicular to line-of-sight, in orbital planet) of body 2 with respect to body 1.
-            z (ndarray): The z coordinate (perpendicular to line-of-sight, above orbital planet) of body 2 with respect to body 1.
+            list: A list of 3 ndarrays containing the x,y,z coordinate of body 2 with respect to body 1.
+            
+                The x coordinate is along the line-of-sight.
+                The y coordinate is perpendicular to the line-of-sight and in the orbital plane.
+                The z coordinate is perpendicular to the line-of-sight and above the orbital plane
         
         """
         

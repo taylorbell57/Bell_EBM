@@ -114,7 +114,7 @@ class Map(object):
             refLon (float, optional): The sub-stellar longitude used to de-rotate the map.
         
         Returns:
-            fig (obj:figure): The figure containing the plot.
+            figure: The figure containing the plot.
         
         """
         
@@ -157,7 +157,7 @@ class Map(object):
             refLon (float, optional): The sub-stellar longitude used to de-rotate the map.
         
         Returns:
-            fig (obj:figure): The figure containing the plot.
+            figure: The figure containing the plot.
         
         """
         

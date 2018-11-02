@@ -16,8 +16,8 @@ class System(object):
     """A Star+Planet System.
 
     Attributes:
-        star (:obj:Star): The host star.
-        planet (:obj:Planet): The planet.
+        star (Star): The host star.
+        planet (Planet): The planet.
     
     """
 
@@ -25,8 +25,8 @@ class System(object):
         """Initialization function.
         
         Attributes:
-            star (:obj:Star, optional): The host star.
-            planet (:obj:Planet, optional): The planet.
+            star (Star, optional): The host star.
+            planet (Planet, optional): The planet.
 
         """
         
@@ -59,7 +59,7 @@ class System(object):
         """Get the orbital phase of periastron.
         
         Returns:
-            phase (float): The orbital phase of periastron.
+            float: The orbital phase of periastron.
             
         """
         
@@ -69,7 +69,7 @@ class System(object):
         """Get the orbital phase of transit.
         
         Returns:
-            phase (float): The orbital phase of transit.
+            float: The orbital phase of transit.
             
         """
         
@@ -80,7 +80,7 @@ class System(object):
         """Get the orbital phase of eclipse.
         
         Returns:
-            phase (float): The orbital phase of eclipse.
+            float: The orbital phase of eclipse.
             
         """
         
@@ -93,7 +93,7 @@ class System(object):
             t (ndarray): The time in days.
         
         Returns:
-            phase (ndarray): The orbital phase.
+            ndarray: The orbital phase.
             
         """
         
@@ -106,9 +106,11 @@ class System(object):
             t (ndarray): The time in days.
         
         Returns:
-            x (ndarray): The x coordinate (along line-of-sight) of the planet.
-            y (ndarray): The y coordinate (perpedicular line-of-sight, within orbital plane) of the planet.
-            z (ndarray): The y coordinate (perpedicular line-of-sight, above orbital plane) of the planet.
+            list: A list of 3 ndarrays containing the x,y,z coordinate of the planet with respect to the star.
+            
+                The x coordinate is along the line-of-sight.
+                The y coordinate is perpendicular to the line-of-sight and in the orbital plane.
+                The z coordinate is perpendicular to the line-of-sight and above the orbital plane
             
         """
         
@@ -121,7 +123,7 @@ class System(object):
             t (ndarray): The time in days.
         
         Returns:
-            distance (ndarray): The separation between the star and planet in m.
+            ndarray: The separation between the star and planet in m.
             
         """
         
@@ -136,7 +138,7 @@ class System(object):
             t (ndarray): The time in days.
         
         Returns:
-            Firr (ndarray): The instantaneous irradiation.
+            ndarray: The instantaneous irradiation.
             
         """
         
@@ -149,7 +151,7 @@ class System(object):
             t (ndarray): The time in days.
         
         Returns:
-            Finc (ndarray): The instantaneous incident flux.
+            ndarray: The instantaneous incident flux.
             
         """
         
@@ -162,13 +164,16 @@ class System(object):
         
         Args:
             t (ndarray): The time in days.
-            T (ndarray): The temperature map (either shape (1, self.planet.map.npix) and constant over time or shape is (t.shape, self.planet.map.npix). If None, use self.planet.map.values instead (default).
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
+            T (ndarray): The temperature map (either shape (1, self.planet.map.npix) and
+                constant over time or shape is (t.shape, self.planet.map.npix). If None,
+                use self.planet.map.values instead (default).
+            bolo (bool, optional): Determines whether computed flux is bolometric
+                (True, default) or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
         
         Returns:
-            fp_fstar (ndarray): The observed planetary flux normalized by the stellar flux.
+            ndarray: The observed planetary flux normalized by the stellar flux.
             
         """
         
@@ -188,12 +193,13 @@ class System(object):
         
         Args:
             fp_fstar (ndarray): The observed planetary flux normalized by the stellar flux.
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
+            bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
+                or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
             
         Returns:
-            Tapp (ndarray): The apparent, disk-integrated temperature.
+            ndarray: The apparent, disk-integrated temperature.
             
         """
         
@@ -217,7 +223,7 @@ class System(object):
             T (ndarray): The temperature map with shape (self.planet.map.npix).
         
         Returns:
-            dT_dt (ndarray): The derivative in temperature with respect to time.
+            ndarray: The derivative in temperature with respect to time.
             
         """
         
@@ -237,15 +243,15 @@ class System(object):
         """Evolve the planet's temperature map with time.
         
         Args:
-            T0 (ndarray): The initial temperature map with shape (self.planet.map.npix). If None, use self.planet.map.values instead (default).
+            T0 (ndarray): The initial temperature map with shape (self.planet.map.npix).
+                If None, use self.planet.map.values instead (default).
             t0 (float, optional): The time corresponding to T0 (default is 0).
             t1 (float, optional): The end point of the run (default is 1 orbital period later).
             dt (float, optional): The time step used to evolve the map (default is 1/100 of the orbital period).
             verbose (bool, optional): Output comments of the progress of the run (default = False).
         
         Returns:
-            times (ndarray): The times of each time step.
-            maps (ndarray): The map at each time step.
+            list: A list of 2 ndarrays containing the time and map of each time step.
             
         """
         
@@ -294,14 +300,18 @@ class System(object):
         """A convenience plotting routine to show the planet's phasecurve.
         
         Args:
-            t (ndarray, optional): The time in days with shape (t.size,1). If none, use [self.planet.t0,self.planet.t0+self.planet.Porb].
-            T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix) if the map is constant or (t.size,self.planet.map.npix). If None, use self.planet.map.values instead.
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
+            t (ndarray, optional): The time in days with shape (t.size,1). If none, use
+                [self.planet.t0,self.planet.t0+self.planet.Porb].
+            T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix)
+                if the map is constant or (t.size,self.planet.map.npix). If None, use
+                self.planet.map.values instead.
+            bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
+                or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
         
         Returns:
-            fig (obj:figure): The figure containing the plot.
+            figure: The figure containing the plot.
             
         """
         
@@ -348,14 +358,18 @@ class System(object):
         """A convenience plotting routine to show the planet's phasecurve in units of temperature.
         
         Args:
-            t (ndarray, optional): The time in days with shape (t.size,1). If none, use [self.planet.t0,self.planet.t0+self.planet.Porb].
-            T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix) if the map is constant or (t.size,self.planet.map.npix). If None, use self.planet.map.values instead.
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
+            t (ndarray, optional): The time in days with shape (t.size,1). If none, use
+                [self.planet.t0,self.planet.t0+self.planet.Porb].
+            T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix) if
+                the map is constant or (t.size,self.planet.map.npix). If None, use
+                self.planet.map.values instead.
+            bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
+                or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
         
         Returns:
-            fig (obj:figure): The figure containing the plot.
+            figure: The figure containing the plot.
             
         """
         

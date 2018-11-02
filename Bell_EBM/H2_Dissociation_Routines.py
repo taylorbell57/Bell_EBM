@@ -15,7 +15,7 @@ def nQ(mu, T):
         T (ndarray): The temperature.
 
     Returns:
-        nQ (ndarray): The quantum concentration.
+        ndarray: The quantum concentration.
 
     """
     
@@ -29,7 +29,7 @@ def dissFracSaha(T, P):
         P (ndarray): The pressure
 
     Returns:
-        chi (ndarray): The dissociation fraction of H2.
+        ndarray: The dissociation fraction of H2.
 
     """
     
@@ -64,7 +64,7 @@ def dDissFracSaha(T, P):
         P (ndarray): The pressure
 
     Returns:
-        dchi (ndarray): The derivative of the dissociation fraction of H2.
+        ndarray: The derivative of the dissociation fraction of H2.
 
     """
     
@@ -104,7 +104,7 @@ def dissFracApprox(T, mu=3320.680532597579, std=471.38088012739126):
         std (float, optional): The standard deviation for the error function.
 
     Returns:
-        chi (ndarray): The dissociation fraction of H2.
+        ndarray: The dissociation fraction of H2.
 
     """
     
@@ -119,7 +119,7 @@ def dDissFracApprox(T, mu=3320.680532597579, std=471.38088012739126):
         std (float, optional): The standard deviation for the Gaussian function.
 
     Returns:
-        dchi (ndarray): The derivative in the dissociation fraction of H2.
+        ndarray: The derivative in the dissociation fraction of H2.
 
     """
     
@@ -132,8 +132,7 @@ def getSahaApproxParams(P = 0.1*const.atm.value):
         P (ndarray): The pressure.
 
     Returns:
-        mu (float): The mean for the Gaussian/erf functions.
-        std (float): The standard deviation for the Gaussian/erf functions.
+        list: 2 floats containing the mean and the standard deviatio for the Gaussian/erf functions.
 
     """
     
@@ -164,7 +163,7 @@ def cp_H2(T):
         T (ndarray): The temperature.
 
     Returns:
-        cp_H2 (ndarray): The isobaric specific heat capacity of H2.
+        ndarray: The isobaric specific heat capacity of H2.
 
     """
     
@@ -199,7 +198,7 @@ def delta_cp_H2(T):
         T (ndarray): The temperature.
 
     Returns:
-        dcp_H2 (ndarray): The derivative of theisobaric specific heat capacity of H2.
+        ndarray: The derivative of theisobaric specific heat capacity of H2.
 
     """
     
@@ -240,7 +239,7 @@ def true_cp(T, mu=3320.680532597579, std=471.38088012739126):
         std (float): The standard deviation for the Gaussian/erf approximations to the Saha equation.
 
     Returns:
-        cp (ndarray): The isobaric specific heat capacity of an LTE mix of H2+H.
+        ndarray: The isobaric specific heat capacity of an LTE mix of H2+H.
 
     """
     

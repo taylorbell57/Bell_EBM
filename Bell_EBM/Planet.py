@@ -24,13 +24,13 @@ class Planet(object):
         e (float): The planet's orbital eccentricity.
         g (float): The planet's surface gravity in m/s^2.
         inc (float): The planet's orbial inclination (in degrees above face-on)
-        map (:object:Map): The planet's temperature map.
+        map (Map): The planet's temperature map.
         mass (float): The planet's mass in kg.
         mlDensity (float): The density of the planet's mixed layer.
         mlDepth (float): The depth of the planet's mixed layer.
         obliq (float): The planet's obliquity (axial tilt) (in degrees toward star).
         Omega (float): The planet's longitude of ascending node (in degrees CCW from line-of-sight).
-        orbit (:object:KeplerOrbit): The planet's orbit.
+        orbit (KeplerOrbit): The planet's orbit.
         plType (str): The planet's composition.
         Porb (float): The planet's orbital period in days.
         Prot (float): The planet's rotational period in days.
@@ -181,8 +181,9 @@ class Planet(object):
             t (ndarray): The time in days.
         
         Returns:
-            sspLon (ndarray): The sub-stellar longitude in the same shape as t.
-            sspLat (ndarray): The sub-stellar latitude in the same shape as t.
+            list: A list of 2 ndarrays containing the sub-stellar longitude and latitude.
+                
+                Each ndarray is in the same shape as t.
         
         """
         
@@ -208,8 +209,9 @@ class Planet(object):
             t (ndarray): The time in days.
         
         Returns:
-            sopLon (ndarray): The sub-observer longitude in the same shape as t.
-            sopLat (ndarray): The sub-observer latitude in the same shape as t.
+            list: A list of 2 ndarrays containing the sub-observer longitude and latitude.
+            
+                Each ndarray is in the same shape as t.
         
         """
         
@@ -228,11 +230,12 @@ class Planet(object):
         
         Args:
             T (ndarray): The temperature (if None, use self.map.values).
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
+            bolo (bool, optional): Determines whether computed flux is bolometric
+                (True, default) or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False.
         
         Returns:
-            Fout (ndarray): The emitted flux in the same shape as T.
+            ndarray: The emitted flux in the same shape as T.
         
         """
         
@@ -258,7 +261,7 @@ class Planet(object):
             refPos (str, optional): The reference position (SSP or SOP).
         
         Returns:
-            weights (ndarray): The weighting of map mixels at time t. Has shape (t.size, self.map.npix).
+            ndarray: The weighting of map mixels at time t. Has shape (t.size, self.map.npix).
         
         """
         
@@ -286,11 +289,12 @@ class Planet(object):
         Args:
             t (ndarray): The time in days.
             T (ndarray): The temperature (if None, use self.map.values).
-            bolo (bool, optional): Determines whether computed flux is bolometric (True, default) or wavelength dependent (False).
+            bolo (bool, optional): Determines whether computed flux is bolometric
+                (True, default) or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False
         
         Returns:
-            Fout (ndarray): The apparent emitted flux. Has shape (t.size, self.map.npix).
+           ndarray: The apparent emitted flux. Has shape (t.size, self.map.npix).
         
         """
         
@@ -315,7 +319,7 @@ class Planet(object):
             time (float, optional): The time corresponding to the map used to de-rotate the map.
         
         Returns:
-            fig (obj:figure): The figure containing the plot.
+            figure: The figure containing the plot.
         
         """
         
@@ -340,7 +344,7 @@ class Planet(object):
             time (float, optional): The time corresponding to the map used to de-rotate the map.
         
         Returns:
-            fig (obj:figure): The figure containing the plot.
+            figure: The figure containing the plot.
         
         """
         
