@@ -20,7 +20,7 @@ class Planet(object):
         argp (float): The planet's argument of periastron (in degrees CCW from Omega).
         C (float, optional): The planet's heat capacity in J/m^2/K.
         cp (float or callable): The planet's isobaric specific heat capacity in J/kg/K.
-        cpParams (:obj:iterable, optional): Any parameters to be passed to cp if using the bell2018 LTE H2+H mix cp
+        cpParams (iterable, optional): Any parameters to be passed to cp if using the bell2018 LTE H2+H mix cp
         e (float): The planet's orbital eccentricity.
         g (float): The planet's surface gravity in m/s^2.
         inc (float): The planet's orbial inclination (in degrees above face-on)
