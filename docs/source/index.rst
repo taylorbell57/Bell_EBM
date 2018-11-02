@@ -11,7 +11,6 @@ Welcome to Bell_EBM's documentation!
    :caption: Contents:
 
    Bell_EBM
-   modules
 
 
 Indices and tables
