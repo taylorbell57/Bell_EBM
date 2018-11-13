@@ -273,10 +273,13 @@ class Planet(object):
             print('Reference point "'+str(refPos)+'" not understood!')
             return False
         
-        lonWeight = np.max(np.append(np.zeros((1,t.size,self.map.npix)), 
-                                     np.cos((self.map.lonGrid-refLon)*np.pi/180)[np.newaxis,:,:], axis=0), axis=0)
-        latWeight = np.cos((self.map.latGrid-refLat)*np.pi/180)[0]
-        return lonWeight*latWeight
+        weight = (np.cos(self.map.latGrid*np.pi/180)*np.cos(refLat*np.pi/180)*np.cos((self.map.lonGrid-refLon)*np.pi/180)+
+                  np.sin(self.map.latGrid*np.pi/180)*np.sin(refLat*np.pi/180))
+        
+        weight = np.max(np.append(np.zeros_like(weight[np.newaxis,:]), weight[np.newaxis,:], axis=0), axis=0)
+        
+        return weight
+
     
     def Fp_vis(self, t, T=None, bolo=True, wav=4.5e-6):
         """Calculate apparent outgoing planetary flux (used for making phasecurves).
@@ -306,7 +309,7 @@ class Planet(object):
         # used to try to remove wiggles from finite number of pixels coming in and out of view
         weightsNormed = weights*(4*np.pi/self.map.npix)/np.pi
         
-        return np.sum(flux*weights, axis=1)/np.sum(weightsNormed, axis=1)
+        return np.sum(flux*weights, axis=1)#/np.sum(weightsNormed, axis=1)
 
     def showMap(self, tempMap=None, time=None):
         """A convenience routine to plot the planet's temperature map.
