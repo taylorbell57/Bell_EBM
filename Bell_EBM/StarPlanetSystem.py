@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-02
+# Last Update: 2018-11-19
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -40,12 +40,12 @@ class System(object):
             self.planet = Planet()
         else:
             self.planet = planet
-            
+        
         updatePlanet = False
         if self.planet.Porb is None:
             self.planet.orbit = KeplerOrbit(t0=self.planet.t0, a=self.planet.a, inc=self.planet.inc,
-                                         e=self.planet.e, Omega=self.planet.Omega, argp=self.planet.argp,
-                                         m1=self.star.mass, m2=self.planet.mass)
+                                            e=self.planet.e, Omega=self.planet.Omega, argp=self.planet.argp,
+                                            m1=self.star.mass, m2=self.planet.mass)
             self.planet.Porb = self.planet.orbit.Porb
             updatePlanet = True
         if self.planet.Prot_input is None:

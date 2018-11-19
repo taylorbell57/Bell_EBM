@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-02
+# Last Update: 2018-11-19
 
 import numpy as np
 import matplotlib
@@ -170,9 +170,9 @@ class Planet(object):
             else:
                 self.Prot = 2*np.pi*self.rad/((self.vWind+self.vRot)*(24*3600))
         
-        if self.Porb is not None:
-            self.orbit = KeplerOrbit(a=self.a, Porb=self.Porb, inc=self.inc, t0=self.t0, 
-                                     e=self.e, Omega=self.Omega, argp=self.argp, m2=self.mass)
+#         if self.Porb is not None:
+#             self.orbit = KeplerOrbit(a=self.a, Porb=self.Porb, inc=self.inc, t0=self.t0, 
+#                                      e=self.e, Omega=self.Omega, argp=self.argp, m2=self.mass)
     
     def SSP(self, t):
         """Calculate the sub-stellar longitude and latitude.
