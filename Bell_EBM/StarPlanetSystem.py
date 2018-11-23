@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-19
+# Last Update: 2018-11-20
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -160,12 +160,12 @@ class System(object):
             t = np.array([t]).reshape(-1,1)
         return self.Firr(t)*self.planet.weight(t)
 
-    def lightcurve(self, t, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
+    def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
         """Calculate the planet's lightcurve (ignoring any occultations).
         
         Args:
-            t (ndarray): The time in days.
-            T (ndarray): The temperature map (either shape (1, self.planet.map.npix) and
+            t (ndarray, optional): The time in days. If None, will use 1000 time steps around orbit.
+            T (ndarray, optional): The temperature map (either shape (1, self.planet.map.npix) and
                 constant over time or shape is (t.shape, self.planet.map.npix). If None,
                 use self.planet.map.values instead (default).
             bolo (bool, optional): Determines whether computed flux is bolometric
@@ -177,6 +177,11 @@ class System(object):
             ndarray: The observed planetary flux normalized by the stellar flux.
             
         """
+        
+        if t is None:
+            # Use Prot instead as map would rotate
+            t = self.planet.t0+np.linspace(0, self.planet.Prot, 1000)
+            x = t/self.planet.Prot - np.rint(t[0]/self.planet.Prot)
         
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array([t]).reshape(-1,1)
@@ -311,8 +316,8 @@ class System(object):
         """A convenience plotting routine to show the planet's phasecurve.
         
         Args:
-            t (ndarray, optional): The time in days with shape (t.size,1). If none, use
-                [self.planet.t0,self.planet.t0+self.planet.Porb].
+            t (ndarray, optional): The time in days with shape (t.size,1).  If None, will use 1000
+                time steps around orbit.
             T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix)
                 if the map is constant or (t.size,self.planet.map.npix). If None, use
                 self.planet.map.values instead.
@@ -352,28 +357,26 @@ class System(object):
             x *= self.planet.Porb
         
         plt.plot(x, lc)
-        plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label='Eclipse')
+        plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label=r'$\rm Eclipse$')
         if self.planet.e != 0 and self.get_phase_eclipse()!=self.get_phase_periastron():
-            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='-.', label='Periastron')
+            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='-.', label=r'$\rm Periastron$')
 
-        plt.legend(loc=8, bbox_to_anchor=(0.5,1), fontsize='x-large', ncol=2)
-        plt.ylabel(r'$F_p/F_*$ (ppm)', fontsize='xx-large')
+        plt.legend(loc=8, bbox_to_anchor=(0.5,1), ncol=2)
+        plt.ylabel(r'$F_p/F_*\rm~(ppm)$')
         if self.planet.e == 0:
-            plt.xlabel('Orbital Phase', fontsize='xx-large')
+            plt.xlabel(r'$\rm Orbital~Phase$')
         else:
-            plt.xlabel('Time from Transit (days)', fontsize='xx-large')
+            plt.xlabel(r'$\rm Time~from~Transit~(days)$')
         plt.xlim(np.min(x), np.max(x))
         plt.ylim(0)
-        plt.setp(plt.gca().get_xticklabels(), fontsize='x-large')
-        plt.setp(plt.gca().get_yticklabels(), fontsize='x-large')
         return plt.gcf()
     
     def plot_tempcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
         """A convenience plotting routine to show the planet's phasecurve in units of temperature.
         
         Args:
-            t (ndarray, optional): The time in days with shape (t.size,1). If none, use
-                [self.planet.t0,self.planet.t0+self.planet.Porb].
+            t (ndarray, optional): The time in days with shape (t.size,1).  If None, will use 1000
+                time steps around orbit.
             T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix) if
                 the map is constant or (t.size,self.planet.map.npix). If None, use
                 self.planet.map.values instead.
@@ -414,21 +417,19 @@ class System(object):
             x *= self.planet.Porb
         
         plt.plot(x, tc)
-        plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label='Eclipse')
+        plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label=r'$\rm Eclipse$')
         if self.planet.e != 0 and self.get_phase_eclipse()!=self.get_phase_periastron():
-            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='-.', label='Periastron')
+            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='-.', label=r'$\rm Periastron$')
 
-        plt.legend(loc=8, bbox_to_anchor=(0.5,1), fontsize='x-large', ncol=2)
+        plt.legend(loc=8, bbox_to_anchor=(0.5,1), ncol=2)
         if bolo:
-            plt.ylabel(r'$T_{\rm eff, hemi, apparent}$ (K)', fontsize='xx-large')
+            plt.ylabel(r'$T_{\rm eff, hemi, apparent}\rm~(K)$')
         else:
-            plt.ylabel(r'$T_{\rm b, hemi, apparent}$ (K)', fontsize='xx-large')
+            plt.ylabel(r'$T_{\rm b, hemi, apparent}\rm~(K)$')
         if self.planet.e == 0:
-            plt.xlabel('Orbital Phase', fontsize='xx-large')
+            plt.xlabel(r'$\rm Orbital~Phase$')
         else:
-            plt.xlabel('Time from Transit (days)', fontsize='xx-large')
+            plt.xlabel(r'$\rm Time~from~Transit~(days)$')
         plt.xlim(np.min(x), np.max(x))
         plt.ylim(0)
-        plt.setp(plt.gca().get_xticklabels(), fontsize='x-large')
-        plt.setp(plt.gca().get_yticklabels(), fontsize='x-large')
         return plt.gcf()

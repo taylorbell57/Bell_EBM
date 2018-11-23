@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-19
+# Last Update: 2018-11-20
 
 import numpy as np
 import matplotlib
@@ -223,10 +223,10 @@ class Map(object):
                 tempMap = np.roll(tempMap, rollCount, axis=1)
 
             im = plt.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90))
-            plt.xlabel(r'Longitude', fontsize='large')
-            plt.ylabel(r'Latitude', fontsize='large')
-            plt.xticks([-180,-90,0,90,180], fontsize='large')
-            plt.yticks([-90,-45,0,45,90], fontsize='large')
+            plt.xlabel(r'$\rm Longitude$')
+            plt.ylabel(r'$\rm Latitude$')
+            plt.xticks([-180,-90,0,90,180])
+            plt.yticks([-90,-45,0,45,90])
             cbar = plt.colorbar(orientation='vertical', fraction=0.05, pad = 0.05, aspect=9)
         else:
             current_cmap = matplotlib.cm.get_cmap('inferno')
@@ -242,8 +242,7 @@ class Map(object):
             plt.setp(plt.gca().spines.values(), color='none')
             cbar = plt.colorbar(orientation='horizontal',fraction=0.075, pad = 0.05)
         
-        cbar.ax.tick_params(labelsize='large')
-        cbar.set_label('Temperature (K)', fontsize='x-large')
+        cbar.set_label(r'$\rm Temperature~(K)$')
         return plt.gcf()
     
     def plot_dissociation(self, refLon=None):
@@ -264,10 +263,10 @@ class Map(object):
                 dissMap = np.roll(dissMap, rollCount, axis=1)
 
             plt.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0)
-            plt.xlabel(r'Longitude', fontsize='large')
-            plt.ylabel(r'Latitude', fontsize='large')
-            plt.xticks([-180,-90,0,90,180], fontsize='large')
-            plt.yticks([-90,-45,0,45,90], fontsize='large')
+            plt.xlabel(r'$\rm Longitude$')
+            plt.ylabel(r'$\rm Latitude$')
+            plt.xticks([-180,-90,0,90,180])
+            plt.yticks([-90,-45,0,45,90])
             cbar = plt.colorbar(orientation='vertical', fraction=0.05, pad = 0.05, aspect=9)
         else:
             current_cmap = matplotlib.cm.get_cmap('inferno')
@@ -283,6 +282,5 @@ class Map(object):
             plt.setp(plt.gca().spines.values(), color='none')
             cbar = plt.colorbar(orientation='horizontal', fraction=0.075, pad = 0.05)
         
-        cbar.ax.tick_params(labelsize='large')
-        cbar.set_label('Dissociation Fraction (%)', fontsize='x-large')
+        cbar.set_label(r'$\rm Dissociation~Fraction~(\%)$')
         return plt.gcf()

@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-19
+# Last Update: 2018-11-20
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -261,12 +261,12 @@ class KeplerOrbit(object):
 
         plt.plot(y, x, '.', c='k', ms=2)
         plt.plot(0,0, '*', c='r', ms=15)
-        plt.plot(yTrans, xTrans, 'o', c='b', ms=10, label='Transit')
-        plt.plot(yEcl, xEcl, 'o', c='k', ms=7, label='Eclipse')
+        plt.plot(yTrans, xTrans, 'o', c='b', ms=10, label=r'$\rm Transit$')
+        plt.plot(yEcl, xEcl, 'o', c='k', ms=7, label=r'$\rm Eclipse$')
         if self.e != 0:
-            plt.plot(yPeri, xPeri, 'o', c='r', ms=5, label='Periastron')
-        plt.xlabel('y')
-        plt.ylabel('x')
+            plt.plot(yPeri, xPeri, 'o', c='r', ms=5, label=r'$\rm Periastron$')
+        plt.xlabel('$y$')
+        plt.ylabel('$x$')
         plt.gca().invert_yaxis()
         plt.gca().set_aspect('equal')
         plt.legend(loc=6, bbox_to_anchor=(1,0.5))
@@ -279,8 +279,8 @@ class KeplerOrbit(object):
         if self.e != 0:
             plt.plot(yPeri, zPeri, 'o', c='r', ms=5)
         plt.gca().set_aspect('equal')
-        plt.xlabel('y')
-        plt.ylabel('z')
+        plt.xlabel('$y$')
+        plt.ylabel('$z$')
         plt.show()
 
         plt.plot(x, z, '.', c='k', ms=2)
@@ -289,8 +289,8 @@ class KeplerOrbit(object):
         plt.plot(xEcl, zEcl, 'o', c='k', ms=7)
         if self.e != 0:
             plt.plot(xPeri, zPeri, 'o', c='r', ms=5)
-        plt.xlabel('x')
-        plt.ylabel('z')
+        plt.xlabel('$x$')
+        plt.ylabel('$z$')
         plt.gca().set_aspect('equal')
         plt.show()
 
