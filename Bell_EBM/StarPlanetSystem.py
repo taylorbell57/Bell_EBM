@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-20
+# Last Update: 2018-11-26
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -55,7 +55,7 @@ class System(object):
             
         if updatePlanet:
             planet.update()
-    
+        
     def get_phase_periastron(self):
         """Get the orbital phase of periastron.
         
@@ -131,6 +131,34 @@ class System(object):
         if type(t)!=np.ndarray or len(t.shape)!=1:
             t = np.array([t]).reshape(-1)
         return self.planet.orbit.distance(t).reshape(-1,1)
+    
+    def get_teq(self, t=0):
+        """Get the planet's equilibrium temperature.
+        
+        Args:
+            t (ndarray, optional): The time in days (default is 0).
+        
+        Returns:
+            ndarray: The planet's equilibrium temperature at time(s) t.
+            
+        """
+        return 0.25**0.25*self.get_tirr(t)
+    
+    def get_tirr(self, t=0):
+        """Get the planet's irradiation temperature.
+        
+        Args:
+            t (ndarray, optional): The time in days (default is 0).
+        
+        Returns:
+            ndarray: The planet's equilibrium temperature at time(s) t.
+            
+        """
+        dist = self.distance(t)
+        if type(t) == float or type(t) == int:
+            dist = float(dist)
+        
+        return self.star.teff*np.sqrt(self.star.rad/dist)
     
     def Firr(self, t):
         """Calculate the instantaneous irradiation.
