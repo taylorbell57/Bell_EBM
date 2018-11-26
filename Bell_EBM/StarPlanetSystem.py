@@ -151,7 +151,7 @@ class System(object):
             t (ndarray, optional): The time in days (default is 0).
         
         Returns:
-            ndarray: The planet's equilibrium temperature at time(s) t.
+            ndarray: The planet's irradiation temperature at time(s) t.
             
         """
         dist = self.distance(t)
