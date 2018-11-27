@@ -353,7 +353,7 @@ class System(object):
         
         return times, maps
 
-    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
+    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True):
         """A convenience plotting routine to show the planet's phasecurve.
         
         Args:
@@ -366,6 +366,7 @@ class System(object):
                 or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
+            allowReflect (bool, optional): Account for the contribution from reflected light.
         
         Returns:
             figure: The figure containing the plot.
@@ -386,7 +387,7 @@ class System(object):
         elif len(T.shape)==1:
             T = T.reshape(1,-1)
         
-        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav)*1e6
+        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav, allowReflect=allowReflect)*1e6
 
         t = t.flatten()
         x = x.flatten()
