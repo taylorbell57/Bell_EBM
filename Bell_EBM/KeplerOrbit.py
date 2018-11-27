@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-20
+# Last Update: 2018-11-27
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -62,7 +62,7 @@ class KeplerOrbit(object):
         
         return 2*np.pi*self.a**(3/2)/np.sqrt(const.G.value*(self.m1+self.m2))/(24*3600)
     
-    def meanMotion(self):
+    def mean_motion(self):
         """Get the mean motion.
         
         Returns:
@@ -141,7 +141,7 @@ class KeplerOrbit(object):
         
         return (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp)-self.ta_to_ma(1.*np.pi/2.-self.argp))/(2*np.pi)*self.Porb)
     
-    def meanAnomaly(self, t):
+    def mean_anomaly(self, t):
         """Convert time to mean anomaly.
         
         Args:
@@ -152,9 +152,9 @@ class KeplerOrbit(object):
         
         """
         
-        return (t-self.peri_time()) * self.meanMotion()
+        return (t-self.peri_time()) * self.mean_motion()
     
-    def eccentricAnomaly(self, t, xtol=1e-10):
+    def eccentric_anomaly(self, t, xtol=1e-10):
         """Convert time to eccentric anomaly, numerically.
         
         Args:
@@ -166,7 +166,7 @@ class KeplerOrbit(object):
         
         """
         
-        M = self.meanAnomaly(t)
+        M = self.mean_anomaly(t)
         f = lambda E: E - self.e*np.sin(E) - M
         if self.e < 0.8:
             E0 = M
@@ -175,7 +175,7 @@ class KeplerOrbit(object):
         E = scipy.optimize.fsolve(f, E0, xtol=xtol)
         return E
     
-    def trueAnomaly(self, t, xtol=1e-10):
+    def true_anomaly(self, t, xtol=1e-10):
         """Convert time to true anomaly, numerically.
         
         Args:
@@ -187,7 +187,7 @@ class KeplerOrbit(object):
         
         """
         
-        return 2*np.arctan(np.sqrt((1+self.e)/(1-self.e))*np.tan(self.eccentricAnomaly(t, xtol=xtol)/2))
+        return 2*np.arctan(np.sqrt((1+self.e)/(1-self.e))*np.tan(self.eccentric_anomaly(t, xtol=xtol)/2))
     
     def distance(self, t, xtol=1e-10):
         """Find the separation between the two bodies.
@@ -201,7 +201,7 @@ class KeplerOrbit(object):
         
         """
         
-        return self.a*(1-self.e**2)/(1+self.e*np.cos(self.trueAnomaly(t, xtol=xtol)))
+        return self.a*(1-self.e**2)/(1+self.e*np.cos(self.true_anomaly(t, xtol=xtol)))
     
     # Find the position of the planet at time t
     def xyz(self, t, xtol=1e-10):
@@ -220,7 +220,7 @@ class KeplerOrbit(object):
         
         """
         
-        E = self.eccentricAnomaly(t, xtol=xtol)
+        E = self.eccentric_anomaly(t, xtol=xtol)
         
         # The following code is roughly based on:
         # https://space.stackexchange.com/questions/8911/determining-orbital-position-at-a-future-point-in-time
