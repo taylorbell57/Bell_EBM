@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-26
+# Last Update: 2018-11-27
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -171,7 +171,7 @@ class System(object):
             
         """
         
-        return self.star.Fstar()/(np.pi*self.distance(t)**2)
+        return self.planet.absorptivity*self.star.Fstar()/(np.pi*self.distance(t)**2)
 
     def Finc(self, t):
         """Calculate the instantaneous incident flux.
@@ -188,7 +188,7 @@ class System(object):
             t = np.array([t]).reshape(-1,1)
         return self.Firr(t)*self.planet.weight(t)
 
-    def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
+    def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True):
         """Calculate the planet's lightcurve (ignoring any occultations).
         
         Args:
@@ -200,6 +200,7 @@ class System(object):
                 (True, default) or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
+            allowReflect (bool, optional): Account for the contribution from reflected light.
         
         Returns:
             ndarray: The observed planetary flux normalized by the stellar flux.
@@ -220,7 +221,19 @@ class System(object):
         if len(T.shape)==1:
             T = T.reshape(1,-1)
         
-        return self.planet.Fp_vis(t, T, bolo, wav)/self.star.Fstar(bolo, tStarBright, wav)
+        fp = self.planet.Fp_vis(t, T, bolo, wav)
+        
+        if allowReflect:
+            illuminated = (np.cos((self.planet.map.lonGrid-self.planet.ssp(t)[0].reshape(-1,1))*np.pi/180)>0).astype(int)
+            vis_illumination = illuminated*self.planet.weight(t, refPos='SOP')
+            fReflect = vis_illumination*self.planet.map.pixArea/np.pi
+            fReflect /= 2 #Accounting for overall normalization (not all of it is going straight at you right now)
+            illumFraction = np.sum(fReflect, axis=1)
+            
+            fp += (illumFraction*self.planet.albedo*self.star.Fstar(bolo, tStarBright, wav)
+                   *(self.planet.rad/self.distance(t).flatten())**2)
+        
+        return fp/self.star.Fstar(bolo, tStarBright, wav)
     
     def invert_lc(self, fp_fstar, bolo=True, tStarBright=None, wav=4.5e-6):
         """Invert the fp/fstar phasecurve into an apparent temperature phasecurve.
@@ -273,7 +286,7 @@ class System(object):
         return CdT_dt/C
 
     # Run the model - can be used to burn in temperature map or make a phasecurve
-    def runModel(self, T0=None, t0=0, t1=None, dt=None, verbose=True):
+    def run_model(self, T0=None, t0=0, t1=None, dt=None, verbose=True):
         """Evolve the planet's temperature map with time.
         
         Args:
