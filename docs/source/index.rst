@@ -40,7 +40,7 @@ Indices and tables
 License & Attribution
 =====================
 
-Copyright 2018 Taylor James Bell.
+Copyright (c) 2018 Taylor James Bell.
 
 Bell_EBM is free software made available under the MIT License. For details
 see the ``LICENSE``.
