@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-27
+# Last Update: 2018-11-28
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,8 +17,8 @@ class System(object):
     """A Star+Planet System.
 
     Attributes:
-        star (Star): The host star.
-        planet (Planet): The planet.
+        star (Bell_EBM.Star): The host star.
+        planet (Bell_EBM.Planet): The planet.
     
     """
 
@@ -26,8 +26,8 @@ class System(object):
         """Initialization function.
         
         Attributes:
-            star (Star, optional): The host star.
-            planet (Planet, optional): The planet.
+            star (Bell_EBM.Star, optional): The host star.
+            planet (Bell_EBM.Planet, optional): The planet.
 
         """
         
@@ -117,11 +117,11 @@ class System(object):
         
         return self.planet.orbit.xyz(t)
     
-    def distance(self, t):
+    def distance(self, t=0):
         """Calculate the instantaneous separation between star and planet.
         
         Args:
-            t (ndarray): The time in days.
+            t (ndarray, optional): The time in days.
         
         Returns:
             ndarray: The separation between the star and planet in m.
@@ -136,7 +136,7 @@ class System(object):
         """Get the planet's equilibrium temperature.
         
         Args:
-            t (ndarray, optional): The time in days (default is 0).
+            t (ndarray, optional): The time in days.
         
         Returns:
             ndarray: The planet's equilibrium temperature at time(s) t.
@@ -148,7 +148,7 @@ class System(object):
         """Get the planet's irradiation temperature.
         
         Args:
-            t (ndarray, optional): The time in days (default is 0).
+            t (ndarray, optional): The time in days.
         
         Returns:
             ndarray: The planet's irradiation temperature at time(s) t.
@@ -160,24 +160,32 @@ class System(object):
         
         return self.star.teff*np.sqrt(self.star.rad/dist)
     
-    def Firr(self, t):
+    def Firr(self, t=0, bolo=True, tStarBright=None, wav=4.5e-6):
         """Calculate the instantaneous irradiation.
         
         Args:
-            t (ndarray): The time in days.
+            t (ndarray, optional): The time in days.
+            bolo (bool, optional): Determines whether computed flux is bolometric
+                (True, default) or wavelength dependent (False).
+            tStarBright (ndarray): The stellar brightness temperature to use if bolo==False.
+            wav (float, optional): The wavelength to use if bolo==False.
         
         Returns:
             ndarray: The instantaneous irradiation.
             
         """
         
-        return self.planet.absorptivity*self.star.Fstar()/(np.pi*self.distance(t)**2)
+        return self.planet.absorptivity*self.star.Fstar(bolo, tStarBright, wav)/(np.pi*self.distance(t)**2)
 
-    def Finc(self, t):
+    def Fin(self, t=0, bolo=True, tStarBright=None, wav=4.5e-6):
         """Calculate the instantaneous incident flux.
         
         Args:
-            t (ndarray): The time in days.
+            t (ndarray, optional): The time in days.
+            bolo (bool, optional): Determines whether computed flux is bolometric
+                (True, default) or wavelength dependent (False).
+            tStarBright (ndarray): The stellar brightness temperature to use if bolo==False.
+            wav (float, optional): The wavelength to use if bolo==False.
         
         Returns:
             ndarray: The instantaneous incident flux.
@@ -186,9 +194,9 @@ class System(object):
         
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array([t]).reshape(-1,1)
-        return self.Firr(t)*self.planet.weight(t)
+        return self.Firr(t, bolo, tStarBright, wav)*self.planet.weight(t)
 
-    def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True):
+    def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
         """Calculate the planet's lightcurve (ignoring any occultations).
         
         Args:
@@ -198,9 +206,10 @@ class System(object):
                 use self.planet.map.values instead (default).
             bolo (bool, optional): Determines whether computed flux is bolometric
                 (True, default) or wavelength dependent (False).
-            tBright (ndarray): The brightness temperature to use if bolo==False.
+            tStarBright (ndarray): The stellar brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
             allowReflect (bool, optional): Account for the contribution from reflected light.
+            allowThermal (bool, optional): Account for the contribution from thermal emission.
         
         Returns:
             ndarray: The observed planetary flux normalized by the stellar flux.
@@ -221,17 +230,17 @@ class System(object):
         if len(T.shape)==1:
             T = T.reshape(1,-1)
         
-        fp = self.planet.Fp_vis(t, T, bolo, wav)
+        if allowThermal:
+            fp = self.planet.Fp_vis(t, T, bolo, wav)
+        else:
+            fp = np.zeros_like(t.flatten())
         
         if allowReflect:
-            illuminated = (np.cos((self.planet.map.lonGrid-self.planet.ssp(t)[0].reshape(-1,1))*np.pi/180)>0).astype(int)
-            vis_illumination = illuminated*self.planet.weight(t, refPos='SOP')
-            fReflect = vis_illumination*self.planet.map.pixArea/np.pi
-            fReflect /= 2 #Accounting for overall normalization (not all of it is going straight at you right now)
-            illumFraction = np.sum(fReflect, axis=1)
-            
-            fp += (illumFraction*self.planet.albedo*self.star.Fstar(bolo, tStarBright, wav)
-                   *(self.planet.rad/self.distance(t).flatten())**2)
+            fRefl = self.Fin(t, bolo, tStarBright, wav)
+            fRefl *= self.planet.albedo/self.planet.absorptivity # Get only the reflected portion
+            fRefl = fRefl*self.planet.weight(t, refPos='SOP')*self.planet.map.pixArea*self.planet.rad**2
+            fRefl = np.sum(fRefl, axis=1)
+            fp += fRefl
         
         return fp/self.star.Fstar(bolo, tStarBright, wav)
     
@@ -274,7 +283,7 @@ class System(object):
             
         """
         
-        CdT_dt = (24*3600)*(self.Finc(t)-self.planet.Fout(T))
+        CdT_dt = (24*3600)*(self.Fin(t)-self.planet.Fout(T))
         
         if not callable(self.planet.cp):
             C = self.planet.C
@@ -353,7 +362,7 @@ class System(object):
         
         return times, maps
 
-    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True):
+    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
         """A convenience plotting routine to show the planet's phasecurve.
         
         Args:
@@ -367,6 +376,7 @@ class System(object):
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
             allowReflect (bool, optional): Account for the contribution from reflected light.
+            allowThermal (bool, optional): Account for the contribution from thermal emission.
         
         Returns:
             figure: The figure containing the plot.
@@ -387,7 +397,8 @@ class System(object):
         elif len(T.shape)==1:
             T = T.reshape(1,-1)
         
-        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav, allowReflect=allowReflect)*1e6
+        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav, allowReflect=allowReflect,
+                             allowThermal=allowThermal)*1e6
 
         t = t.flatten()
         x = x.flatten()

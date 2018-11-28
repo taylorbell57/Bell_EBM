@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-27
+# Last Update: 2018-11-28
 
 import numpy as np
 import matplotlib
@@ -26,14 +26,13 @@ class Planet(object):
         emissivity (float): The emissivity of the emitting layer (between 0 and 1).
         g (float): The planet's surface gravity in m/s^2.
         inc (float): The planet's orbial inclination (in degrees above face-on)
-        map (Map): The planet's temperature map.
+        map (Bell_EBM.Map): The planet's temperature map.
         mass (float): The planet's mass in kg.
         mlDensity (float): The density of the planet's mixed layer.
         mlDepth (float): The depth of the planet's mixed layer (in units of m for rock/water or Pa for gas/bell2018).
-        nside (int): A parameter that sets the resolution of the map (should be much smaller if useHealpix).
         obliq (float): The planet's obliquity (axial tilt) (in degrees toward star).
         Omega (float): The planet's longitude of ascending node (in degrees CCW from line-of-sight).
-        orbit (KeplerOrbit): The planet's orbit.
+        orbit (Bell_EBM.KeplerOrbit): The planet's orbit.
         plType (str): The planet's composition.
         Porb (float): The planet's orbital period in days.
         Prot (float): The planet's rotational period in days.
@@ -47,9 +46,10 @@ class Planet(object):
     
     """
     
-    def __init__(self, plType='gas', rad=1, mass=1, a=0.03, Porb=None, Prot=None,
+    def __init__(self, plType='gas', rad=1, mass=1,
+                 a=0.03, Porb=None, Prot=None, inc=90, t0=0, e=0, Omega=270, argp=90, obliq=0, argobliq=0,
                  vWind=0, albedo=0, cp=None, mlDepth=None, mlDensity=None, T_exponent=4, emissivity=1, trasmissivity=0,
-                 inc=90, t0=0, e=0, Omega=270, argp=90, obliq=0, argobliq=0, nside=16, useHealpix=False):
+                 nlat=16, nlon=None, useHealpix=False, nside=7):
         """Initialization function.
         
         Args:
@@ -59,6 +59,13 @@ class Planet(object):
             a (float, optional): The planet's semi-major axis in m.
             Porb (float, optional): The planet's orbital period in days.
             Prot (float, optional): The planet's rotational period in days.
+            inc (float, optional): The planet's orbial inclination (in degrees above face-on)
+            t0 (float, optional): The planet's linear ephemeris in days.
+            e (float, optional): The planet's orbital eccentricity.
+            Omega (float, optional): The planet's longitude of ascending node (in degrees CCW from line-of-sight).
+            argp (float, optional): The planet's argument of periastron (in degrees CCW from Omega).
+            obliq (float, optional): The planet's obliquity (axial tilt) (in degrees toward star).
+            argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
             vWind (float, optional): The planet's wind velocity in m/s.
             albedo (float, optional): The planet's Bond albedo.
             cp (float or callable, optional): The planet's isobaric specific heat capacity in J/kg/K.
@@ -70,15 +77,11 @@ class Planet(object):
                 1 for Newtonian cooling).
             emissivity (float, optional): The emissivity of the emitting layer (between 0 and 1).
             trasmissivity (float, optional): The trasmissivity of the emitting layer (between 0 and 1).
-            inc (float, optional): The planet's orbial inclination (in degrees above face-on)
-            t0 (float, optional): The planet's linear ephemeris in days.
-            e (float, optional): The planet's orbital eccentricity.
-            Omega (float, optional): The planet's longitude of ascending node (in degrees CCW from line-of-sight).
-            argp (float, optional): The planet's argument of periastron (in degrees CCW from Omega).
-            obliq (float, optional): The planet's obliquity (axial tilt) (in degrees toward star).
-            argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
-            nside (int, optional): A parameter that sets the resolution of the map (should be much smaller if useHealpix).
+            nlat (int, optional): The number of latitudinal cells to use for rectangular maps.
+            nlon (int, optional): The number of longitudinal cells to use for rectangular maps.
+                If nlon==None, uses 2*nlat.
             useHealpix (bool, optional): Whether the planet's map uses a healpix grid.
+            nside (int, optional): A parameter that sets the resolution of healpix maps.
         
         """
         
@@ -152,7 +155,7 @@ class Planet(object):
             return False
         
         #Map Attributes
-        self.map = Map(nside, useHealpix=useHealpix)
+        self.map = Map(nlat=nlat, nlon=nlon, useHealpix=useHealpix, nside=nside)
                 
         #Orbital Attributes
         self.a = a*const.au.value          # m
@@ -271,7 +274,7 @@ class Planet(object):
             t = np.array([t])
         sopLon = 180-((t-self.orbit.t0)/self.Prot)*360
         sopLon = sopLon%180+(-180)*(np.rint(np.floor(sopLon%360/180) > 0))
-        sopLat = 90-self.inc-self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
+        sopLat = 90-self.inc-self.obliq
         return sopLon, sopLat
 
     def Fout(self, T=None, bolo=True, wav=1e-6):

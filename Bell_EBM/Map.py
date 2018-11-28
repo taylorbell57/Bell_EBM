@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-20
+# Last Update: 2018-11-28
 
 import numpy as np
 import matplotlib
@@ -15,7 +15,9 @@ class Map(object):
         latGrid (ndarray): The latitude grid in degrees.
         lon (ndarray, optional): The unique longitude values in degrees.
         lonGrid (ndarray): The longitude grid in degrees.
-        nside (int): A parameter that sets the resolution of the map.
+        nlat (int, optional): The number of latitudinal cells to use for rectangular maps.
+        nlon (int, optional): The number of longitudinal cells to use for rectangular maps.
+        nside (int, optional): A parameter that sets the resolution of healpy maps.
         pixArea (ndarray): The area of each pixel.
         time (float): Time of map in days.
         useHealpix (bool): Whether the planet's map uses a healpix grid.
@@ -23,35 +25,43 @@ class Map(object):
     
     """
     
-    def __init__(self, nside=16, values=None, time=0, useHealpix=False):
+    def __init__(self, values=None, time=0, nlat=16, nlon=None, useHealpix=False, nside=7):
         """Initialization funciton.
 
         Args:
-            nside (int, optional): A parameter that sets the resolution of the map.
+            
             values(ndarray, optional): The temperature map values.
             time (float, optional): Time of map in days.
+            nlat (int, optional): The number of latitudinal cells to use for rectangular maps.
+            nlon (int, optional): The number of longitudinal cells to use for rectangular maps.
+                If nlon==None, uses 2*nlat.
             useHealpix (bool, optional): Whether the planet's map uses a healpix grid.
+            nside (int, optional): A parameter that sets the resolution of healpix maps.
 
         """
         
         self.time = time
         self.useHealpix = useHealpix
         if not self.useHealpix:
-            self.nside = np.rint(nside).astype(int)
-            self.npix = self.nside*(2*self.nside)
+            self.nlat = int(nlat)
+            if nlon==None:
+                self.nlon = int(2*self.nlat)
+            else:
+                self.nlon = int(nlon)
+            self.npix = int(self.nlat*self.nlon)
 
-            self.dlat = 180/self.nside
-            self.lat = np.linspace(-90+self.dlat/2, 90-self.dlat/2, self.nside)
-            latTop = self.lat+self.dlat/2
-            latBot = self.lat-self.dlat/2
+            self.dlat = 180./self.nlat
+            self.lat = np.linspace(-90.+self.dlat/2., 90.-self.dlat/2., self.nlat, endpoint=True)
+            latTop = self.lat+self.dlat/2.
+            latBot = self.lat-self.dlat/2.
 
-            self.dlon = 360/(self.nside*2)
-            self.lon = np.linspace(-180+self.dlon/2, 180-self.dlon/2, self.nside*2)
-            lonRight = self.lon+self.dlon/2
-            lonLeft = self.lon-self.dlon/2
+            self.dlon = 360./self.nlon
+            self.lon = np.linspace(-180.+self.dlon/2., 180.-self.dlon/2., self.nlon, endpoint=True)
+            lonRight = self.lon+self.dlon/2.
+            lonLeft = self.lon-self.dlon/2.
 
-            latArea = np.abs(2*np.pi*(np.sin(latTop*np.pi/180)-np.sin(latBot*np.pi/180)))
-            areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360).reshape(-1,1)
+            latArea = np.abs(2.*np.pi*(np.sin(latTop*np.pi/180.)-np.sin(latBot*np.pi/180.)))
+            areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360.).reshape(-1,1)
             latGrid, lonGrid = np.meshgrid(self.lat, self.lon)
 
             self.pixArea = areas.reshape(1, -1)
@@ -68,9 +78,9 @@ class Map(object):
 
             coords = np.empty((self.npix,2))
             for i in range(self.npix):
-                coords[i,:] = np.array(hp.pix2ang(self.nside, i))*180/np.pi
+                coords[i,:] = np.array(hp.pix2ang(self.nside, i))*180./np.pi
             lon = coords[:,1]
-            lat = coords[:,0]-90
+            lat = coords[:,0]-90.
             self.latGrid = lat.reshape(1, -1)
             self.lonGrid = lon.reshape(1, -1)
         
@@ -222,7 +232,7 @@ class Map(object):
                 rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2+1e-6)[0][0]-int(self.lon.size/2))
                 tempMap = np.roll(tempMap, rollCount, axis=1)
 
-            im = plt.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90))
+            im = plt.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90), origin='lower')
             plt.xlabel(r'$\rm Longitude$')
             plt.ylabel(r'$\rm Latitude$')
             plt.xticks([-180,-90,0,90,180])
@@ -262,7 +272,7 @@ class Map(object):
                 rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2+1e-6)[0][0]-int(self.lon.size/2))
                 dissMap = np.roll(dissMap, rollCount, axis=1)
 
-            plt.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0)
+            plt.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0, origin='lower')
             plt.xlabel(r'$\rm Longitude$')
             plt.ylabel(r'$\rm Latitude$')
             plt.xticks([-180,-90,0,90,180])
