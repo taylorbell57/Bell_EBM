@@ -242,8 +242,11 @@ class KeplerOrbit(object):
         
         return x, y, z
     
-    def show_orbit(self):
+    def plot_orbit(self):
         """A convenience routine to visualize the orbit
+        
+        Returns:
+            figure: The figure containing the plot.
         
         """
         
@@ -292,6 +295,5 @@ class KeplerOrbit(object):
         plt.xlabel('$x$')
         plt.ylabel('$z$')
         plt.gca().set_aspect('equal')
-        plt.show()
-
-        return
+        
+        return plt.gcf()
