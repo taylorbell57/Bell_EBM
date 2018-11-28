@@ -43,7 +43,7 @@ License & Attribution
 Copyright (c) 2018 Taylor James Bell.
 
 Bell_EBM is free software made available under the MIT License. For details
-see the ``LICENSE``.
+see the `LICENSE <LICENSE>`_.
 
 If you make use of Bell_EBM in your work, please cite the Bell & Cowan (2018) paper
 (`arXiv <https://arxiv.org/abs/1802.07725>`_,
