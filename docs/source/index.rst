@@ -11,7 +11,7 @@ Bell_EBM is an object-oriented and flexible Energy Balance Model (EBM) that can 
 Package Usage
 =============
 
-Check out the `Quickstart Tutorial <docs/Bell_EBM_Tutorial.html>`_ to get an idea of the capabilities of this EBM, and explore the API for a more detailed description of each of the functions and objects. But the simplest, default usage of the model is:
+Check out the `Quickstart Tutorial <Bell_EBM_Tutorial.html>`_ to get an idea of the capabilities of this EBM, and explore the API for a more detailed description of each of the functions and objects. But the simplest, default usage of the model is:
 
 .. code-block:: python
 
@@ -34,4 +34,4 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`
+.. * :ref:`search`
