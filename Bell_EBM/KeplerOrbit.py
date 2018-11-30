@@ -23,57 +23,38 @@ class KeplerOrbit(object):
         t_ecl (float): Time of body 2's eclipse by body 1.
         mean_motion (float): The mean motion in radians.
     
-    """
+    """ 
     
-#     Porb (float): The orbital period in days.
-#     Prot (float): Body 2's rotational period in days.
-#     m1 (float): The mass of body 1 in kg.
-#     m2 (float): The mass of body 2 in kg.
-#     t_trans (float): Time of body 1's eclipse by body 2.
-    
-    
-    
-    
-    @property
-    def t_trans(self):
-        """float: Time of body 1's eclipse by body 2.
-        
-        Read-only.
-        
-        """
-        return self.t0
     
     @property
     def m1(self):
         """float: Body 1's mass in kg.
         
-        If no period was provided when the orbit was initialized, this will update the period.
+        If no period was provided when the orbit was initialized, changing this will update the period.
         
         """
+        
         return self._m1
     
     @property
     def m2(self):
         """float: Body 2's mass in kg.
         
-        If no period was provided when the orbit was initialized, this will update the period.
+        If no period was provided when the orbit was initialized, changing this will update the period.
         
         """
+        
         return self._m2
     
     @property
-    def Porb(self):
-        """float: Body 2's orbital period in days.
+    def phase_eclipse(self):
+        """float: The orbital phase of eclipse.
         
-        This will update Prot if none was provided when the orbit was initialized.
-        
+        Read-only.
+            
         """
-        return self._Porb
-    
-    @property
-    def Prot(self):
-        """float: Body 2's rotational period in days."""
-        return self._Prot
+        
+        return self.get_phase(self.t_ecl)
     
     @property
     def phase_periastron(self):
@@ -82,6 +63,7 @@ class KeplerOrbit(object):
         Read-only.
         
         """
+        
         return self.get_phase(self.t_peri)
     
     @property
@@ -94,70 +76,31 @@ class KeplerOrbit(object):
         
         return 0
     
-    
     @property
-    def get_phase_eclipse(self):
-        """float: The orbital phase of eclipse.
+    def Porb(self):
+        """float: Body 2's orbital period in days.
         
-        Read-only.
-            
+        Changing this will update Prot if none was provided when the orbit was initialized.
+        
         """
         
-        return self.get_phase(self.t_ecl)
+        return self._Porb
     
-    @m1.setter
-    def m1(self, m1):
-        self._m1 = m1
-        if self.Porb_input is None:
-            self.Porb = self.solve_period()
-        return
-    
-    @m2.setter
-    def m2(self, m2):
-        self._m2 = m2
-        if self.Porb_input is None:
-            self.Porb = self.solve_period()
-        return
-    
-    @Porb.setter
-    def Porb(self, Porb):
-        self._Porb = Porb
-            
-        # Update self.Prot
-        if self.Prot_input is None:
-            self.wRot = 1/(self.Porb*self.ProtSign*24*3600) # m/s
-        else:
-            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+    @property
+    def Prot(self):
+        """float: Body 2's rotational period in days."""
         
-        self.Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+        return self._Prot
     
-        self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
-        if self.t_peri < 0:
-            self.t_peri = self.Porb + self.t_peri
-
-        self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180)
-                                 - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
-        if self.t_ecl < 0:
-            self.t_ecl = self.Porb + self.t_ecl
-            
-        self.mean_motion = 2*np.pi/self._Porb
-    
-        return
-    
-    @Prot.setter
-    def Prot(self, Prot):
-        self.Prot_input = Prot
+    @property
+    def t_trans(self):
+        """float: Time of body 1's eclipse by body 2.
         
-        # Update self.Prot
-        if self.Prot_input is None:
-            self.wRot = 1/(self.Porb*self.ProtSign*24*3600) # m/s
-        else:
-            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+        Read-only.
         
-        self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
-    
-        return
-    
+        """
+        
+        return self.t0
     
     
     
@@ -246,13 +189,58 @@ class KeplerOrbit(object):
         return
     
     
+    @m1.setter
+    def m1(self, m1):
+        self._m1 = m1
+        if self.Porb_input is None:
+            self.Porb = self.solve_period()
+        return
     
+    @m2.setter
+    def m2(self, m2):
+        self._m2 = m2
+        if self.Porb_input is None:
+            self.Porb = self.solve_period()
+        return
     
+    @Porb.setter
+    def Porb(self, Porb):
+        self._Porb = Porb
+            
+        # Update self.Prot
+        if self.Prot_input is None:
+            self.wRot = 1/(self.Porb*self.ProtSign*24*3600) # m/s
+        else:
+            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+        
+        self.Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
     
+        self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
+        if self.t_peri < 0:
+            self.t_peri = self.Porb + self.t_peri
+
+        self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180)
+                                 - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
+        if self.t_ecl < 0:
+            self.t_ecl = self.Porb + self.t_ecl
+            
+        self.mean_motion = 2*np.pi/self._Porb
     
+        return
     
+    @Prot.setter
+    def Prot(self, Prot):
+        self.Prot_input = Prot
+        
+        # Update self.Prot
+        if self.Prot_input is None:
+            self.wRot = 1/(self.Porb*self.ProtSign*24*3600) # m/s
+        else:
+            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+        
+        self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
     
-    
+        return
     
     
     def solve_period(self):
