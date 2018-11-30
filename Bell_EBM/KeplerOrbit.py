@@ -199,7 +199,7 @@ class KeplerOrbit(object):
     @m2.setter
     def m2(self, m2):
         self._m2 = m2
-        if self.Porb_input is None:
+        if self.Porb_input is None and self.m1 is not None:
             self.Porb = self.solve_period()
         return
     

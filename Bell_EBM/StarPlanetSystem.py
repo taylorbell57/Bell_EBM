@@ -42,8 +42,6 @@ class System(object):
             self.planet = planet
         
         self.planet.orbit.m1 = self.star.mass
-        if self.planet.orbit.Porb is None:
-            self.planet.orbit.set_Porb()
     
     def get_phase_periastron(self):
         """Get the orbital phase of periastron.
