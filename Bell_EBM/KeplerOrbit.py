@@ -31,86 +31,8 @@ class KeplerOrbit(object):
 #     m2 (float): The mass of body 2 in kg.
 #     t_trans (float): Time of body 1's eclipse by body 2.
     
-    def __init__(self, a=const.au.value, Porb=None, inc=90, t0=0, e=0, Omega=270, argp=90, # orbital parameters
-                 obliq=0, argobliq=0, Prot=None, wWind=0, # spin parameters
-                 m1=const.M_sun.value, m2=0): # mass parameters
-        """Initialization function.
-        
-        Args:
-            a (float, optional): The semi-major axis in m.
-            Porb (float, optional): The orbital period in days.
-            inc (float, optional): The orbial inclination (in degrees above face-on)
-            t0 (float, optional): The linear ephemeris in days.
-            e (float, optional): The orbital eccentricity.
-            Omega (float, optional): The longitude of ascending node (in degrees CCW from line-of-sight).
-            argp (float, optional): The argument of periastron (in degrees CCW from Omega).
-            m1 (float, optional): The mass of body 1 in kg.
-            m2 (float, optional): The mass of body 2 in kg.
-            obliq (float, optional): The obliquity (axial tilt) of body 2 (in degrees toward body 1).
-            argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
-            wWind (float, optional): The body 2's wind angular velocity in revolutions/s.
-        
-        """
-        
-        self.e = e
-        self.a = a
-        self.inc = inc
-        self.Omega = Omega
-        self.argp = argp
-        self.t0 = t0
-        self._m1 = m1
-        self._m2 = m2
-        
-        #Orbital Attributes
-        self.Porb_input = Porb
-        self._Porb = Porb
-        if self.Porb is not None:
-            self.mean_motion = 2*np.pi/self.Porb
-        else:
-            self.mean_motion = None
-        
-        # Obliquity Attributes
-        self.obliq = obliq                 # degrees toward star
-        self.argobliq = argobliq           # degrees from t0
-        if -90 <= self.obliq <= 90:
-            self.ProtSign = 1
-        else:
-            self.ProtSign = -1
-        
-        #Rotation Rate Attributes
-        if Prot is not None:
-            self.Prot_input = Prot*self.ProtSign               # days
-        elif self.Porb is not None:
-            self.Prot_input = self.Porb*self.ProtSign
-        else:
-            self.Prot_input = None
-        
-        if wWind is None:
-            self.wWind = 0
-        else:
-            self.wWind = wWind                 # revolutions/s
-            
-        if self.Prot_input is not None:
-            self.wRot = 1/(self.Prot_input*24*3600) # m/s
-        elif self.Porb is not None:
-            self.wRot = 1/(self.Porb*24*3600) # m/s
-        else:
-            self.wRot = None
-        
-        if self.wRot is not None:
-            self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
-        
-        if self.Porb is not None:
-            self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
-            if self.t_peri < 0:
-                self.t_peri = self.Porb + self.t_peri
-
-            self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180)
-                                     - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
-            if self.t_ecl < 0:
-                self.t_ecl = self.Porb + self.t_ecl
-            
-        return
+    
+    
     
     @property
     def t_trans(self):
@@ -235,6 +157,102 @@ class KeplerOrbit(object):
         self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
     
         return
+    
+    
+    
+    
+    
+    
+    
+    def __init__(self, a=const.au.value, Porb=None, inc=90, t0=0, e=0, Omega=270, argp=90, # orbital parameters
+                 obliq=0, argobliq=0, Prot=None, wWind=0, # spin parameters
+                 m1=const.M_sun.value, m2=0): # mass parameters
+        """Initialization function.
+        
+        Args:
+            a (float, optional): The semi-major axis in m.
+            Porb (float, optional): The orbital period in days.
+            inc (float, optional): The orbial inclination (in degrees above face-on)
+            t0 (float, optional): The linear ephemeris in days.
+            e (float, optional): The orbital eccentricity.
+            Omega (float, optional): The longitude of ascending node (in degrees CCW from line-of-sight).
+            argp (float, optional): The argument of periastron (in degrees CCW from Omega).
+            m1 (float, optional): The mass of body 1 in kg.
+            m2 (float, optional): The mass of body 2 in kg.
+            obliq (float, optional): The obliquity (axial tilt) of body 2 (in degrees toward body 1).
+            argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
+            wWind (float, optional): The body 2's wind angular velocity in revolutions/s.
+        
+        """
+        
+        self.e = e
+        self.a = a
+        self.inc = inc
+        self.Omega = Omega
+        self.argp = argp
+        self.t0 = t0
+        self._m1 = m1
+        self._m2 = m2
+        
+        #Orbital Attributes
+        self.Porb_input = Porb
+        self._Porb = Porb
+        if self.Porb is not None:
+            self.mean_motion = 2*np.pi/self.Porb
+        else:
+            self.mean_motion = None
+        
+        # Obliquity Attributes
+        self.obliq = obliq                 # degrees toward star
+        self.argobliq = argobliq           # degrees from t0
+        if -90 <= self.obliq <= 90:
+            self.ProtSign = 1
+        else:
+            self.ProtSign = -1
+        
+        #Rotation Rate Attributes
+        if Prot is not None:
+            self.Prot_input = Prot*self.ProtSign               # days
+        elif self.Porb is not None:
+            self.Prot_input = self.Porb*self.ProtSign
+        else:
+            self.Prot_input = None
+        
+        if wWind is None:
+            self.wWind = 0
+        else:
+            self.wWind = wWind                 # revolutions/s
+            
+        if self.Prot_input is not None:
+            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+        elif self.Porb is not None:
+            self.wRot = 1/(self.Porb*24*3600) # m/s
+        else:
+            self.wRot = None
+        
+        if self.wRot is not None:
+            self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+        
+        if self.Porb is not None:
+            self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
+            if self.t_peri < 0:
+                self.t_peri = self.Porb + self.t_peri
+
+            self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180)
+                                     - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
+            if self.t_ecl < 0:
+                self.t_ecl = self.Porb + self.t_ecl
+            
+        return
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     def solve_period(self):

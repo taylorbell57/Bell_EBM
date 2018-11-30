@@ -35,6 +35,163 @@ class Planet(object):
 #     mlDensity (float): The density of the planet's mixed layer.
 #     mlDepth (float): The depth of the planet's mixed layer (in units of m for rock/water or Pa for gas/bell2018).
 #     rad (float): The planet's radius in m.
+   
+    
+    
+    
+    
+    
+    @property
+    def Porb(self):
+        """float: The planet's orbital period in days."""
+        return self.orbit.Porb
+    
+    @property
+    def Prot(self):
+        """float: The planet's rotational period in days."""
+        return self.orbit.Prot
+    
+    @property
+    def t0(self):
+        """float: The planet's linear ephemeris in days."""
+        return self.orbit.t0
+    
+    @property
+    def mass(self):
+        """float: The planet's mass in kg.
+        
+        Changing the planet's mass will update planet.g and possibly planet.mlDensity and planet.C
+        
+        """
+        return self._mass
+    
+    @property
+    def rad(self):
+        """float: The planet's radius if m.
+        
+        Changing the planet's radius will update planet.g and possibly planet.mlDensity and planet.C
+        
+        """
+        return self._rad
+    
+    @property
+    def mlDepth(self):
+        """float: The depth of the planet's mixed layer.
+        
+        In units of m for rock/water models, or Pa for gas/bell2018 models.
+        
+        Changing the planet's mlDepth may update planet.C
+        
+        """
+        return self._mlDepth
+    
+    @property
+    def mlDensity(self):
+        """float: The density of the planet's mixed layer
+        
+        In kg/m^3 if rock/water models or the inverse of the planet's surface gravity (in s^2/m) for gas/bell2018 models.
+        
+        Changing the planet's mlDensity may update planet.C
+        
+        """
+        return self._mlDensity
+    
+    @property
+    def cp(self):
+        """float or callable: The planet's isobaric specific heat capacity in J/kg/K.
+        
+        Changing the planet's cp may update planet.C
+        
+        """
+        return self._cp
+    
+    @property
+    def absorptivity(self):
+        """float: The fraction of flux absorbed by the planet.
+        
+        Read-only.
+        
+        """
+        return 1-self.albedo-self.trasmissivity
+    
+    @Porb.setter
+    def Porb(self, Porb):
+        self.orbit.Porb = Porb
+        return
+    
+    @t0.setter
+    def t0(self, t0):
+        self.orbit.t0 = t0
+        return
+    
+    @Prot.setter
+    def Prot(self, Prot):
+        self.orbit.Prot = Prot
+        
+        return
+    
+    @mass.setter
+    def mass(self, mass):
+        self._mass = mass
+        
+        # Update dependent attributes
+        g_old = self.g
+        self.g = const.G.value*self.mass/self.rad**2
+        
+        if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
+            if self.mlDensity == 1/g_old:
+                self.mlDensity = 1/self.g        # s^2/m
+            self.C = self.mlDepth*self.mlDensity*self.cp
+                
+        return
+    
+    @rad.setter
+    def rad(self, rad):
+        self._rad = rad
+        
+        # Update dependent attributes
+        g_old = self.g
+        self.g = const.G.value*self.mass/self.rad**2
+        
+        if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
+            if self.mlDensity == 1/g_old:
+                self.mlDensity = 1/self.g        # s^2/m
+            self.C = self.mlDepth*self.mlDensity*self.cp
+                
+        return
+    
+    @mlDepth.setter
+    def mlDepth(self, mlDepth):
+        self._mlDepth = mlDepth
+        
+        # Update dependent properties
+        if not callable(self.cp):
+            self.C = self.mlDepth*self.mlDensity*self.cp
+        return
+    
+    @mlDensity.setter
+    def mlDensity(self, mlDensity):
+        self._mlDensity = mlDensity
+        
+        # Update dependent properties
+        if not callable(self.cp):
+            self.C = self.mlDepth*self.mlDensity*self.cp
+        return
+    
+    @cp.setter
+    def cp(self, cp):
+        self._cp = cp
+        
+        # Update dependent properties
+        if not callable(self.cp):
+            self.C = self.mlDepth*self.mlDensity*self.cp
+        
+        return
+    
+    
+    
+    
+    
     
     
     def __init__(self, plType='gas', rad=1*const.R_jup.value, mass=1*const.M_jup.value,
@@ -155,150 +312,10 @@ class Planet(object):
                                  obliq=obliq, argobliq=argobliq, Prot=Prot, wWind=wWind,
                                  m2=self.mass)
     
-    @property
-    def Porb(self):
-        """float: The planet's orbital period in days."""
-        return self.orbit.Porb
     
-    @property
-    def Prot(self):
-        """float: The planet's rotational period in days."""
-        return self.orbit.Prot
     
-    @property
-    def t0(self):
-        """float: The planet's linear ephemeris in days."""
-        return self.orbit.t0
     
-    @property
-    def mass(self):
-        """float: The planet's mass in kg.
-        
-        Changing the planet's mass will update planet.g and possibly planet.mlDensity and planet.C
-        
-        """
-        return self._mass
     
-    @property
-    def rad(self):
-        """float: The planet's radius if m.
-        
-        Changing the planet's radius will update planet.g and possibly planet.mlDensity and planet.C
-        
-        """
-        return self._rad
-    
-    @property
-    def mlDepth(self):
-        """float: The depth of the planet's mixed layer (in units of m for rock/water models,
-               or Pa for gas/bell2018 models).
-        
-        Changing the planet's mlDepth may update planet.C
-        
-        """
-        return self._mlDepth
-    
-    @property
-    def mlDensity(self):
-        """float: The density of the planet's mixed layer (in kg/m^3) if rock/water models,
-                or the inverse of the planet's surface gravity (in s^2/m) for gas/bell2018 models.
-        
-        Changing the planet's mlDensity may update planet.C
-        
-        """
-        return self._mlDensity
-    
-    @property
-    def cp(self):
-        """float or callable: The planet's isobaric specific heat capacity in J/kg/K.
-        
-        Changing the planet's cp may update planet.C
-        
-        """
-        return self._cp
-    
-    @property
-    def absorptivity(self):
-        """float: The fraction of flux absorbed by the planet.
-        
-        Read-only.
-        
-        """
-        return 1-self.albedo-self.trasmissivity
-    
-    @Porb.setter
-    def Porb(self, Porb):
-        self.orbit.Porb = Porb
-        return
-    
-    @t0.setter
-    def t0(self, t0):
-        self.orbit.t0 = t0
-        return
-    
-    @Prot.setter
-    def Prot(self, Prot):
-        self.orbit.Prot = Prot
-        
-        return
-    
-    @mass.setter
-    def mass(self, mass):
-        self._mass = mass
-        
-        # Update dependent attributes
-        g_old = self.g
-        self.g = const.G.value*self.mass/self.rad**2
-        
-        if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
-            if self.mlDensity == 1/g_old:
-                self.mlDensity = 1/self.g        # s^2/m
-            self.C = self.mlDepth*self.mlDensity*self.cp
-                
-        return
-    
-    @rad.setter
-    def rad(self, rad):
-        self._rad = rad
-        
-        # Update dependent attributes
-        g_old = self.g
-        self.g = const.G.value*self.mass/self.rad**2
-        
-        if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
-            if self.mlDensity == 1/g_old:
-                self.mlDensity = 1/self.g        # s^2/m
-            self.C = self.mlDepth*self.mlDensity*self.cp
-                
-        return
-    
-    @mlDepth.setter
-    def mlDepth(self, mlDepth):
-        self._mlDepth = mlDepth
-        
-        # Update dependent properties
-        if not callable(self.cp):
-            self.C = self.mlDepth*self.mlDensity*self.cp
-        return
-    
-    @mlDensity.setter
-    def mlDensity(self, mlDensity):
-        self._mlDensity = mlDensity
-        
-        # Update dependent properties
-        if not callable(self.cp):
-            self.C = self.mlDepth*self.mlDensity*self.cp
-        return
-    
-    @cp.setter
-    def cp(self, cp):
-        self._cp = cp
-        
-        # Update dependent properties
-        if not callable(self.cp):
-            self.C = self.mlDepth*self.mlDensity*self.cp
-        
-        return
     
     def Fout(self, T=None, bolo=True, wav=1e-6):
         """Calculate the instantaneous outgoing flux.
