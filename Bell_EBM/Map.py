@@ -25,7 +25,7 @@ class Map(object):
     
     """
     
-    def __init__(self, values=None, time=0, nlat=16, nlon=None, useHealpix=False, nside=7):
+    def __init__(self, values=None, time=0., nlat=16, nlon=None, useHealpix=False, nside=7):
         """Initialization funciton.
 
         Args:
@@ -151,7 +151,7 @@ class Map(object):
             if time is not None:
                 self.time = time
             else:
-                self.time = 0
+                self.time = 0.
             if lat is not None:
                 self.lat = lat
             if lon is not None:
@@ -164,17 +164,17 @@ class Map(object):
                 self.pixArea = pixArea
             
             if lat is None and lon is None and latGrid is None and lonGrid is None:
-                self.dlat = 180/self.nside
-                self.lat = np.linspace(-90+self.dlat/2, 90-self.dlat/2, self.nside)
+                self.dlat = 180./self.nside
+                self.lat = np.linspace(-90.+self.dlat/2., 90.-self.dlat/2., self.nside)
                 latTop = self.lat+self.dlat/2
                 latBot = self.lat-self.dlat/2
 
-                self.dlon = 360/(self.nside*2)
-                self.lon = np.linspace(-180+self.dlon/2, 180-self.dlon/2, self.nside*2)
-                lonRight = self.lon+self.dlon/2
-                lonLeft = self.lon-self.dlon/2
+                self.dlon = 360./(self.nside*2.)
+                self.lon = np.linspace(-180.+self.dlon/2., 180.-self.dlon/2., self.nside*2)
+                lonRight = self.lon+self.dlon/2.
+                lonLeft = self.lon-self.dlon/2.
 
-                latArea = np.abs(2*np.pi*(np.sin(latTop*np.pi/180)-np.sin(latBot*np.pi/180)))
+                latArea = np.abs(2.*np.pi*(np.sin(latTop*np.pi/180)-np.sin(latBot*np.pi/180)))
                 areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360).reshape(-1,1)
                 latGrid, lonGrid = np.meshgrid(self.lat, self.lon)
 
@@ -183,12 +183,12 @@ class Map(object):
                 self.lonGrid = lonGrid.reshape(1, -1)
             elif lat is not None and lon is not None and latGrid is None and lonGrid is None:
                 self.dlat = 180./len(self.lat)
-                latTop = self.lat+self.dlat/2
-                latBot = self.lat-self.dlat/2
+                latTop = self.lat+self.dlat/2.
+                latBot = self.lat-self.dlat/2.
 
                 self.dlon = 360./len(self.lon)
-                lonRight = self.lon+self.dlon/2
-                lonLeft = self.lon-self.dlon/2
+                lonRight = self.lon+self.dlon/2.
+                lonLeft = self.lon-self.dlon/2.
 
                 latArea = np.abs(2*np.pi*(np.sin(latTop*np.pi/180)-np.sin(latBot*np.pi/180)))
                 areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360).reshape(-1,1)
@@ -203,15 +203,15 @@ class Map(object):
 
                 if pixArea is None:
                     self.dlat = 180./len(self.lat)
-                    latTop = self.lat+self.dlat/2
-                    latBot = self.lat-self.dlat/2
+                    latTop = self.lat+self.dlat/2.
+                    latBot = self.lat-self.dlat/2.
 
                     self.dlon = 360./len(self.lon)
-                    lonRight = self.lon+self.dlon/2
-                    lonLeft = self.lon-self.dlon/2
+                    lonRight = self.lon+self.dlon/2.
+                    lonLeft = self.lon-self.dlon/2.
 
-                    latArea = np.abs(2*np.pi*(np.sin(latTop*np.pi/180)-np.sin(latBot*np.pi/180)))
-                    areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360).reshape(-1,1)
+                    latArea = np.abs(2.*np.pi*(np.sin(latTop*np.pi/180.)-np.sin(latBot*np.pi/180.)))
+                    areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360.).reshape(-1,1)
                     self.pixArea = areas.reshape(1, -1)
     
     
@@ -229,7 +229,7 @@ class Map(object):
         if not self.useHealpix:
             tempMap = self.values.reshape((self.lat.size, self.lon.size), order='F')
             if refLon is not None:
-                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2+1e-6)[0][0]-int(self.lon.size/2))
+                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][0]-int(self.lon.size/2.))
                 tempMap = np.roll(tempMap, rollCount, axis=1)
 
             im = plt.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90), origin='lower')
@@ -242,7 +242,7 @@ class Map(object):
             current_cmap = matplotlib.cm.get_cmap('inferno')
             current_cmap.set_bad(color='white')
             if refLon is None:
-                refLon = 0
+                refLon = 0.
             im = hp.orthview(self.values, flip='geo', cmap='inferno', min=0,
                              rot=(refLon, 0, 0), return_projected_map=True, cbar=None)
             plt.clf()
@@ -269,7 +269,7 @@ class Map(object):
         if not self.useHealpix:
             dissMap = h2.dissFracApprox(self.values.reshape((self.lat.size, self.lon.size), order='F'))*100.
             if refLon is not None:
-                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2+1e-6)[0][0]-int(self.lon.size/2))
+                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][0]-int(self.lon.size/2.))
                 dissMap = np.roll(dissMap, rollCount, axis=1)
 
             plt.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0, origin='lower')

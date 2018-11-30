@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-02
+# Last Update: 2018-11-30
 
 import numpy as np
 import astropy.constants as const
@@ -14,7 +14,7 @@ class Star(object):
     
     """
     
-    def __init__(self, teff=5778, rad=1, mass=1):
+    def __init__(self, teff=5778., rad=1., mass=1.):
         """Initialization function.
 
         Args:
@@ -47,6 +47,6 @@ class Star(object):
         else:
             if tBright is None:
                 tBright = self.teff
-            a = (2*const.h.value*const.c.value**2/wav**5)
+            a = (2.*const.h.value*const.c.value**2/wav**5)
             b = (const.h.value*const.c.value)/(wav*const.k_B.value)
             return a/np.expm1(b/tBright) * np.pi*self.rad**2

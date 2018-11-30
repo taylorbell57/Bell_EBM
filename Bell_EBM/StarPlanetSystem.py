@@ -62,7 +62,7 @@ class System(object):
             
         """
         
-        return 0
+        return 0.
     
     
     def get_phase_eclipse(self):
@@ -101,7 +101,7 @@ class System(object):
         """
         return 0.25**0.25*self.get_tirr(t)
     
-    def get_tirr(self, t=0):
+    def get_tirr(self, t=0.):
         """Get the planet's irradiation temperature.
         
         Args:
@@ -122,7 +122,7 @@ class System(object):
         
         return self.star.teff*np.sqrt(self.star.rad/dist)
     
-    def Firr(self, t=0, bolo=True, tStarBright=None, wav=4.5e-6):
+    def Firr(self, t=0., bolo=True, tStarBright=None, wav=4.5e-6):
         """Calculate the instantaneous irradiation.
         
         Args:
@@ -186,7 +186,7 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.orbit.t0+np.linspace(0, self.planet.orbit.Prot, 1000)
+            t = self.planet.orbit.t0+np.linspace(0., self.planet.orbit.Prot, 1000)
             x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
         
         if type(t)!=np.ndarray or len(t.shape)==1:
@@ -228,7 +228,7 @@ class System(object):
         """
         
         if bolo:
-            return (fp_fstar*self.star.Fstar(bolo=True)/(np.pi*self.planet.rad**2)/const.sigma_sb.value)**0.25
+            return (fp_fstar*self.star.Fstar(bolo=True)/(np.pi*self.planet.rad**2.)/const.sigma_sb.value)**0.25
         else:
             if tStarBright is None:
                 tStarBright = self.star.teff
@@ -251,7 +251,7 @@ class System(object):
             
         """
         
-        CdT_dt = (24*3600)*(self.Fin(t)-self.planet.Fout(T))
+        CdT_dt = (24.*3600.)*(self.Fin(t)-self.planet.Fout(T))
         
         if not callable(self.planet.cp):
             C = self.planet.C
@@ -263,7 +263,7 @@ class System(object):
         return CdT_dt/C
 
     # Run the model - can be used to burn in temperature map or make a phasecurve
-    def run_model(self, T0=None, t0=0, t1=None, dt=None, verbose=True):
+    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True):
         """Evolve the planet's temperature map with time.
         
         Args:
@@ -307,7 +307,7 @@ class System(object):
         if len(times) < np.floor((t1-t0)/dt):
             if verbose:
                 print('Failed: Trying a smaller time step!')
-            dt /= 10
+            dt /= 10.
             times = np.array([t0]).reshape(1,1)
             maps = np.array([T0]).reshape(1,-1)
             
@@ -353,7 +353,7 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.orbit.t0+np.linspace(0, self.planet.orbit.Prot, 1000)
+            t = self.planet.orbit.t0+np.linspace(0., self.planet.orbit.Prot, 1000)
             x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
         else:
             x = t/self.planet.orbit.Porb - np.rint(t[0]/self.planet.orbit.Porb)
@@ -414,7 +414,7 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.orbit.t0+np.linspace(0, self.planet.orbit.Prot, 1000)
+            t = self.planet.orbit.t0+np.linspace(0., self.planet.orbit.Prot, 1000)
             x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
         else:
             x = t/self.planet.orbit.Porb - np.rint(t[0]/self.planet.orbit.Porb)

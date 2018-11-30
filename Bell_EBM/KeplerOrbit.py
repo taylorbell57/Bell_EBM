@@ -107,9 +107,9 @@ class KeplerOrbit(object):
     
     
     
-    def __init__(self, a=const.au.value, Porb=None, inc=90, t0=0, e=0, Omega=270, argp=90, # orbital parameters
-                 obliq=0, argobliq=0, Prot=None, wWind=0, # spin parameters
-                 m1=const.M_sun.value, m2=0): # mass parameters
+    def __init__(self, a=const.au.value, Porb=None, inc=90., t0=0., e=0., Omega=270., argp=90., # orbital parameters
+                 obliq=0., argobliq=0., Prot=None, wWind=0., # spin parameters
+                 m1=const.M_sun.value, m2=0.): # mass parameters
         """Initialization function.
         
         Args:
@@ -162,27 +162,27 @@ class KeplerOrbit(object):
             self.Prot_input = None
         
         if wWind is None:
-            self.wWind = 0
+            self.wWind = 0.
         else:
             self.wWind = wWind                 # revolutions/s
             
         if self.Prot_input is not None:
-            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+            self.wRot = 1./(self.Prot_input*24.*3600.) # m/s
         elif self.Porb is not None:
-            self.wRot = 1/(self.Porb*24*3600) # m/s
+            self.wRot = 1./(self.Porb*24.*3600.) # m/s
         else:
             self.wRot = None
         
         if self.wRot is not None:
-            self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+            self._Prot = 1./((self.wWind+self.wRot)*(24.*3600.)) # days
         
         if self.Porb is not None:
-            self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
+            self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180.)/(2.*np.pi)*self.Porb
             if self.t_peri < 0:
                 self.t_peri = self.Porb + self.t_peri
 
-            self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180)
-                                     - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
+            self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180.)
+                                     - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180.))/(2.*np.pi)*self.Porb)
             if self.t_ecl < 0:
                 self.t_ecl = self.Porb + self.t_ecl
             
@@ -209,18 +209,18 @@ class KeplerOrbit(object):
             
         # Update self.Prot
         if self.Prot_input is None:
-            self.wRot = 1/(self.Porb*self.ProtSign*24*3600) # m/s
+            self.wRot = 1./(self.Porb*self.ProtSign*24.*3600.) # m/s
         else:
-            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+            self.wRot = 1./(self.Prot_input*24.*3600.) # m/s
         
-        self.Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+        self.Prot = 1/((self.wWind+self.wRot)*(24.*3600.)) # days
     
-        self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
+        self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180.)/(2.*np.pi)*self.Porb
         if self.t_peri < 0:
             self.t_peri = self.Porb + self.t_peri
 
-        self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180)
-                                 - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
+        self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180.)
+                                 - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180.))/(2.*np.pi)*self.Porb)
         if self.t_ecl < 0:
             self.t_ecl = self.Porb + self.t_ecl
             
@@ -234,11 +234,11 @@ class KeplerOrbit(object):
         
         # Update self.Prot
         if self.Prot_input is None:
-            self.wRot = 1/(self.Porb*self.ProtSign*24*3600) # m/s
+            self.wRot = 1/(self.Porb*self.ProtSign*24.*3600.) # m/s
         else:
-            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+            self.wRot = 1/(self.Prot_input*24.*3600.) # m/s
         
-        self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+        self._Prot = 1/((self.wWind+self.wRot)*(24.*3600.)) # days
     
         return
     
@@ -251,7 +251,7 @@ class KeplerOrbit(object):
         
         """
         
-        return 2*np.pi*self.a**(3/2)/np.sqrt(const.G.value*(self.m1+self.m2))/(24*3600)
+        return 2.*np.pi*self.a**(3./2.)/np.sqrt(const.G.value*(self.m1+self.m2))/(24.*3600.)
     
     def ta_to_ea(self, ta):
         """Convert true anomaly to eccentric anomaly.
@@ -333,8 +333,8 @@ class KeplerOrbit(object):
         E = scipy.optimize.fsolve(f, E0, xtol=xtol)
         
         # Make some commonly used values exact
-        E[np.abs(E)<xtol] = 0
-        E[np.abs(E-2*np.pi)<xtol] = 2*np.pi
+        E[np.abs(E)<xtol] = 0.
+        E[np.abs(E-2*np.pi)<xtol] = 2.*np.pi
         E[np.abs(E-np.pi)<xtol] = np.pi
         
         return E.reshape(tShape)
@@ -368,7 +368,7 @@ class KeplerOrbit(object):
         if type(t)!=np.ndarray or len(t.shape)!=1:
             t = np.array([t]).reshape(-1)
         
-        distance = self.a*(1-self.e**2)/(1+self.e*np.cos(self.true_anomaly(t, xtol=xtol)))
+        distance = self.a*(1.-self.e**2.)/(1.+self.e*np.cos(self.true_anomaly(t, xtol=xtol)))
         return distance.reshape(-1,1)
     
     # Find the position of the planet at time t
@@ -393,20 +393,20 @@ class KeplerOrbit(object):
         # The following code is roughly based on:
         # https://space.stackexchange.com/questions/8911/determining-orbital-position-at-a-future-point-in-time
         P = self.a*(np.cos(E)-self.e)
-        Q = self.a*np.sin(E)*np.sqrt(1-self.e**2)
+        Q = self.a*np.sin(E)*np.sqrt(1-self.e**2.)
         
         # Rotate by argument of periapsis
-        x = (np.cos(self.argp*np.pi/180-np.pi/2.)*P-np.sin(self.argp*np.pi/180-np.pi/2.)*Q)
-        y = np.sin(self.argp*np.pi/180-np.pi/2.)*P+np.cos(self.argp*np.pi/180-np.pi/2.)*Q
+        x = (np.cos(self.argp*np.pi/180.-np.pi/2.)*P-np.sin(self.argp*np.pi/180.-np.pi/2.)*Q)
+        y = np.sin(self.argp*np.pi/180.-np.pi/2.)*P+np.cos(self.argp*np.pi/180.-np.pi/2.)*Q
         
         # Rotate by inclination
-        z = -np.sin(np.pi/2-self.inc*np.pi/180)*x
-        x = np.cos(np.pi/2-self.inc*np.pi/180)*x
+        z = -np.sin(np.pi/2.-self.inc*np.pi/180.)*x
+        x = np.cos(np.pi/2.-self.inc*np.pi/180.)*x
         
         # Rotate by longitude of ascending node
         xtemp = x
-        x = -(np.sin(self.Omega*np.pi/180)*xtemp+np.cos(self.Omega*np.pi/180)*y)
-        y = (np.cos(self.Omega*np.pi/180)*xtemp-np.sin(self.Omega*np.pi/180)*y)
+        x = -(np.sin(self.Omega*np.pi/180.)*xtemp+np.cos(self.Omega*np.pi/180.)*y)
+        y = (np.cos(self.Omega*np.pi/180.)*xtemp-np.sin(self.Omega*np.pi/180.)*y)
         
         return x, y, z
     
@@ -421,7 +421,7 @@ class KeplerOrbit(object):
             
         """
         
-        phase = (self.true_anomaly(t)-self.true_anomaly(self.t0))/(2*np.pi)
+        phase = (self.true_anomaly(t)-self.true_anomaly(self.t0))/(2.*np.pi)
         phase = phase + 1*(phase<0).astype(int)
         return phase
     
@@ -448,9 +448,9 @@ class KeplerOrbit(object):
         else:
             tshape = t.shape
         
-        sspLon = self.true_anomaly(t)*180/np.pi - (t-self.t0)/self.Prot*360 + self.Omega+self.argp
-        sspLon = sspLon%180+(-180)*(np.rint(np.floor(sspLon%360/180) > 0))
-        sspLat = self.obliq*np.cos(self.get_phase(t)*2*np.pi-self.argobliq*np.pi/180)
+        sspLon = self.true_anomaly(t)*180./np.pi - (t-self.t0)/self.Prot*360. + self.Omega+self.argp
+        sspLon = sspLon%180+(-180.)*(np.rint(np.floor(sspLon%360/180.) > 0))
+        sspLat = self.obliq*np.cos(self.get_phase(t)*2*np.pi-self.argobliq*np.pi/180.)
         return sspLon.reshape(tshape), sspLat.reshape(tshape)
 
     def get_sop(self, t):
@@ -468,9 +468,9 @@ class KeplerOrbit(object):
         
         if type(t)!=np.ndarray:
             t = np.array([t])
-        sopLon = 180-((t-self.t0)/self.Prot)*360
-        sopLon = sopLon%180+(-180)*(np.rint(np.floor(sopLon%360/180) > 0))
-        sopLat = 90-self.inc-self.obliq
+        sopLon = 180.-((t-self.t0)/self.Prot)*360.
+        sopLon = sopLon%180+(-180.)*(np.rint(np.floor(sopLon%360/180.) > 0))
+        sopLat = 90.-self.inc-self.obliq
         return sopLon, sopLat
     
     
@@ -482,7 +482,7 @@ class KeplerOrbit(object):
         
         """
         
-        t = np.linspace(0,self.Porb,100, endpoint=False)
+        t = np.linspace(0.,self.Porb,100, endpoint=False)
 
         x, y, z = np.array(self.xyz(t))/const.au.value
 

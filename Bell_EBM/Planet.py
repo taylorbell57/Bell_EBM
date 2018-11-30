@@ -112,10 +112,10 @@ class Planet(object):
     
     
     
-    def __init__(self, plType='gas', rad=1*const.R_jup.value, mass=1*const.M_jup.value,
-                 a=0.03*const.au.value, Porb=None, Prot=None, inc=90, t0=0, e=0, Omega=270, argp=90, obliq=0, argobliq=0,
-                 vWind=0, albedo=0, cp=None, cpParams=None, mlDepth=None, mlDensity=None, T_exponent=4,
-                 emissivity=1, trasmissivity=0, nlat=16, nlon=None, useHealpix=False, nside=7):
+    def __init__(self, plType='gas', rad=1.*const.R_jup.value, mass=1.*const.M_jup.value,
+                 a=0.03*const.au.value, Porb=None, Prot=None, inc=90., t0=0., e=0., Omega=270., argp=90, obliq=0., argobliq=0.,
+                 vWind=0., albedo=0., cp=None, cpParams=None, mlDepth=None, mlDensity=None, T_exponent=4.,
+                 emissivity=1., trasmissivity=0., nlat=16, nlon=None, useHealpix=False, nside=7):
         """Initialization function.
         
         Args:
@@ -166,16 +166,16 @@ class Planet(object):
         self.T_exponent = T_exponent
         
         if emissivity > 1:
-            self.emissivity = 1
+            self.emissivity = 1.
         elif emissivity < 0:
-            self.emissivity = 0
+            self.emissivity = 0.
         else:
             self.emissivity = emissivity
         
         if trasmissivity > 1:
-            self.emissivity = 1
+            self.emissivity = 1.
         elif trasmissivity < 0:
-            self.trasmissivity = 0
+            self.trasmissivity = 0.
         else:
             self.trasmissivity = trasmissivity
         
@@ -185,7 +185,7 @@ class Planet(object):
             if self.cp == None:
                 self._cp = 4.1813e3             # J/kg/K
             if self.mlDepth == None:
-                self._mlDepth = 50              # m
+                self._mlDepth = 50.              # m
             if self.mlDensity == None:
                 self._mlDensity = 1e3           # kg/m^3
             self.C = self.mlDepth*self.mlDensity*self.cp
@@ -213,7 +213,7 @@ class Planet(object):
                 self._cp = h2.true_cp
             if self.mlDepth == None:
                 self._mlDepth = 0.1e5           # Pa
-            self._mlDensity = 1/self.g      # s^2/m
+            self._mlDensity = 1./self.g      # s^2/m
         else:
             print('Planet type not accepted!')
             return False
@@ -222,9 +222,9 @@ class Planet(object):
         self.map = Map(nlat=nlat, nlon=nlon, useHealpix=useHealpix, nside=nside)
         
         if vWind == None:
-            wWind = 0
+            wWind = 0.
         else:
-            wWind = vWind/(2*np.pi*self.rad)
+            wWind = vWind/(2.*np.pi*self.rad)
         
         self.orbit = KeplerOrbit(a=a, Porb=Porb, inc=inc, t0=t0, e=e, Omega=Omega, argp=argp,
                                  obliq=obliq, argobliq=argobliq, Prot=Prot, wWind=wWind,
@@ -256,8 +256,8 @@ class Planet(object):
         self.g = const.G.value*self.mass/self.rad**2
         
         if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
-            if self.mlDensity == 1/g_old:
-                self.mlDensity = 1/self.g        # s^2/m
+            if self.mlDensity == 1./g_old:
+                self.mlDensity = 1./self.g        # s^2/m
             self.C = self.mlDepth*self.mlDensity*self.cp
                 
         return
@@ -271,8 +271,8 @@ class Planet(object):
         self.g = const.G.value*self.mass/self.rad**2
         
         if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
-            if self.mlDensity == 1/g_old:
-                self.mlDensity = 1/self.g        # s^2/m
+            if self.mlDensity == 1./g_old:
+                self.mlDensity = 1./self.g        # s^2/m
             self.C = self.mlDepth*self.mlDensity*self.cp
                 
         return
@@ -361,8 +361,8 @@ class Planet(object):
             print('Reference point "'+str(refPos)+'" not understood!')
             return False
         
-        weight = (np.cos(self.map.latGrid*np.pi/180)*np.cos(refLat*np.pi/180)*np.cos((self.map.lonGrid-refLon)*np.pi/180)+
-                  np.sin(self.map.latGrid*np.pi/180)*np.sin(refLat*np.pi/180))
+        weight = (np.cos(self.map.latGrid*np.pi/180.)*np.cos(refLat*np.pi/180.)*np.cos((self.map.lonGrid-refLon)*np.pi/180.)+
+                  np.sin(self.map.latGrid*np.pi/180.)*np.sin(refLat*np.pi/180.))
         
         weight = np.max(np.append(np.zeros_like(weight[np.newaxis,:]), weight[np.newaxis,:], axis=0), axis=0)
         
@@ -395,7 +395,7 @@ class Planet(object):
         weights = self.weight(t, 'SOP')
         flux = self.Fout(T, bolo, wav)*self.map.pixArea*self.rad**2
         # used to try to remove wiggles from finite number of pixels coming in and out of view
-        weightsNormed = weights*(4*np.pi/self.map.npix)/np.pi
+        weightsNormed = weights*(4.*np.pi/self.map.npix)/np.pi
         
         return np.sum(flux*weights, axis=1)#/np.sum(weightsNormed, axis=1)
 
