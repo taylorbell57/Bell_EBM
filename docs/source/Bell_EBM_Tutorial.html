@@ -11821,13 +11821,11 @@ div#notebook {
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># WASP-12b</span>
-<span class="c1"># Radius and mass are in Jupiter units</span>
-<span class="c1"># Orbital Period is in units of days</span>
-<span class="c1"># Semi-major axis is in AU</span>
-<span class="c1"># Wind speed is in m/s</span>
+<span class="c1"># Periods are in units of days</span>
+<span class="c1"># All other units are in SI (m, kg, s, K, J, Pa, etc.)</span>
 <span class="c1"># All angles are in degrees</span>
-<span class="n">planet</span> <span class="o">=</span> <span class="n">ebm</span><span class="o">.</span><span class="n">Planet</span><span class="p">(</span><span class="s1">&#39;bell2018&#39;</span><span class="p">,</span> <span class="n">rad</span><span class="o">=</span><span class="mf">1.900</span><span class="p">,</span> <span class="n">mass</span><span class="o">=</span><span class="mf">1.470</span><span class="p">,</span>
-                    <span class="n">Porb</span><span class="o">=</span><span class="mf">1.09142030</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mf">0.02340</span><span class="p">,</span> <span class="n">inc</span><span class="o">=</span><span class="mf">83.37</span><span class="p">,</span> <span class="n">vWind</span><span class="o">=</span><span class="mf">5e3</span><span class="p">)</span>
+<span class="n">planet</span> <span class="o">=</span> <span class="n">ebm</span><span class="o">.</span><span class="n">Planet</span><span class="p">(</span><span class="s1">&#39;bell2018&#39;</span><span class="p">,</span> <span class="n">rad</span><span class="o">=</span><span class="mf">1.900</span><span class="o">*</span><span class="n">const</span><span class="o">.</span><span class="n">R_jup</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">mass</span><span class="o">=</span><span class="mf">1.470</span><span class="o">*</span><span class="n">const</span><span class="o">.</span><span class="n">M_jup</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                    <span class="n">Porb</span><span class="o">=</span><span class="mf">1.09142030</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mf">0.02340</span><span class="o">*</span><span class="n">const</span><span class="o">.</span><span class="n">au</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">inc</span><span class="o">=</span><span class="mf">83.37</span><span class="p">,</span> <span class="n">vWind</span><span class="o">=</span><span class="mf">5e3</span><span class="p">)</span>
 
 <span class="c1"># WASP-12</span>
 <span class="c1"># Radius and mass are in solar units</span>
@@ -13273,9 +13271,8 @@ IRERkS78f2K5FrdY1s2SAAAAAElFTkSuQmCC
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># We can also specify a rotation rate for the planet: we&#39;ll say it somehow isn&#39;t</span>
 <span class="c1"># tidally locked yet. We also don&#39;t have to specify the planet&#39;s orbital period:</span>
 <span class="c1"># it will be calculated using Kepler&#39;s equations</span>
-<span class="n">planet</span> <span class="o">=</span> <span class="n">ebm</span><span class="o">.</span><span class="n">Planet</span><span class="p">(</span><span class="s1">&#39;rock&#39;</span><span class="p">,</span> <span class="n">rad</span><span class="o">=</span><span class="n">const</span><span class="o">.</span><span class="n">R_earth</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="n">const</span><span class="o">.</span><span class="n">R_jup</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
-                    <span class="n">mass</span><span class="o">=</span><span class="n">const</span><span class="o">.</span><span class="n">M_earth</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="n">const</span><span class="o">.</span><span class="n">M_jup</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
-                    <span class="n">a</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">argp</span><span class="o">=</span><span class="mf">45.</span><span class="p">)</span>
+<span class="n">planet</span> <span class="o">=</span> <span class="n">ebm</span><span class="o">.</span><span class="n">Planet</span><span class="p">(</span><span class="s1">&#39;rock&#39;</span><span class="p">,</span> <span class="n">rad</span><span class="o">=</span><span class="n">const</span><span class="o">.</span><span class="n">R_earth</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">mass</span><span class="o">=</span><span class="n">const</span><span class="o">.</span><span class="n">M_earth</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                    <span class="n">a</span><span class="o">=</span><span class="mf">0.05</span><span class="o">*</span><span class="n">const</span><span class="o">.</span><span class="n">au</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">argp</span><span class="o">=</span><span class="mf">45.</span><span class="p">)</span>
 
 <span class="c1"># The default values are the sun&#39;s values already</span>
 <span class="n">star</span> <span class="o">=</span> <span class="n">ebm</span><span class="o">.</span><span class="n">Star</span><span class="p">()</span>
@@ -13284,7 +13281,7 @@ IRERkS78f2K5FrdY1s2SAAAAAElFTkSuQmCC
 <span class="n">system</span> <span class="o">=</span> <span class="n">ebm</span><span class="o">.</span><span class="n">System</span><span class="p">(</span><span class="n">star</span><span class="p">,</span> <span class="n">planet</span><span class="p">)</span>
 
 <span class="c1"># Now that we know the orbital period, we can set the planet&#39;s rotation period</span>
-<span class="n">system</span><span class="o">.</span><span class="n">planet</span><span class="o">.</span><span class="n">set_Prot</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">planet</span><span class="o">.</span><span class="n">Porb</span><span class="o">*</span><span class="p">(</span><span class="mf">2.</span><span class="o">/</span><span class="mf">3.</span><span class="p">))</span>
+<span class="n">system</span><span class="o">.</span><span class="n">planet</span><span class="o">.</span><span class="n">Prot</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">planet</span><span class="o">.</span><span class="n">Porb</span><span class="o">*</span><span class="p">(</span><span class="mf">2.</span><span class="o">/</span><span class="mf">3.</span><span class="p">)</span>
 </pre></div>
 
 </div>
@@ -14673,11 +14670,11 @@ YII=
 <span class="c1"># We&#39;ll pretend the whole atmosphere absorbs and radiates</span>
 <span class="n">P0</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">atm</span><span class="o">.</span><span class="n">value</span>
 
-<span class="n">a</span> <span class="o">=</span> <span class="mf">1.</span> <span class="c1"># AU</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">au</span><span class="o">.</span><span class="n">value</span> <span class="c1"># AU</span>
 
-<span class="n">Rp</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">R_earth</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="n">const</span><span class="o">.</span><span class="n">R_jup</span><span class="o">.</span><span class="n">value</span> <span class="c1"># R_jup</span>
+<span class="n">Rp</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">R_earth</span><span class="o">.</span><span class="n">value</span> <span class="c1"># m</span>
 
-<span class="n">Mp</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">M_earth</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="n">const</span><span class="o">.</span><span class="n">M_jup</span><span class="o">.</span><span class="n">value</span> <span class="c1"># M_jup</span>
+<span class="n">Mp</span> <span class="o">=</span> <span class="n">const</span><span class="o">.</span><span class="n">M_earth</span><span class="o">.</span><span class="n">value</span> <span class="c1"># kg</span>
 
 <span class="n">Prot</span> <span class="o">=</span> <span class="mf">1.</span> <span class="c1"># days</span>
 
