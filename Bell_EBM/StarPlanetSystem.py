@@ -53,7 +53,7 @@ class System(object):
             
         """
         
-        return self.planet.orbit.get_phase_periastron()
+        return self.planet.orbit.phase_periastron
     
     
     def get_phase_transit(self):
@@ -75,7 +75,7 @@ class System(object):
             
         """
         
-        return self.planet.orbit.get_phase_eclipse()
+        return self.planet.orbit.phase_eclipse
     
     
     def get_phase(self, t):

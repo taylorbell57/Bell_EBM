@@ -11,22 +11,25 @@ class KeplerOrbit(object):
     
     Attributes:
         a (float): The semi-major axis in m.
-        Porb (float): The orbital period in days.
         inc (float): The orbial inclination (in degrees above face-on)
         t0 (float): The linear ephemeris in days.
         e (float): The orbital eccentricity.
         Omega (float): The longitude of ascending node (in degrees CCW from line-of-sight).
         argp (float): The argument of periastron (in degrees CCW from Omega).
-        m1 (float): The mass of body 1 in kg.
-        m2 (float): The mass of body 2 in kg.
         obliq (float, optional): The obliquity (axial tilt) of body 2 (in degrees toward body 1).
         argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
         wWind (float, optional): Body 2's wind angular velocity in revolutions/s.
         t_peri (float): Time of body 2's closest approach to body 1.
         t_ecl (float): Time of body 2's eclipse by body 1.
-        t_trans (float): Time of body 1's eclipse by body 2.
+        mean_motion (float): The mean motion in radians.
     
     """
+    
+#     Porb (float): The orbital period in days.
+#     Prot (float): Body 2's rotational period in days.
+#     m1 (float): The mass of body 1 in kg.
+#     m2 (float): The mass of body 2 in kg.
+#     t_trans (float): Time of body 1's eclipse by body 2.
     
     def __init__(self, a=const.au.value, Porb=None, inc=90, t0=0, e=0, Omega=270, argp=90, # orbital parameters
                  obliq=0, argobliq=0, Prot=None, wWind=0, # spin parameters
@@ -55,12 +58,16 @@ class KeplerOrbit(object):
         self.Omega = Omega
         self.argp = argp
         self.t0 = t0
-        self.m1 = m1
-        self.m2 = m2
+        self._m1 = m1
+        self._m2 = m2
         
         #Orbital Attributes
         self.Porb_input = Porb
-        self.Porb = Porb
+        self._Porb = Porb
+        if self.Porb is not None:
+            self.mean_motion = 2*np.pi/self.Porb
+        else:
+            self.mean_motion = None
         
         # Obliquity Attributes
         self.obliq = obliq                 # degrees toward star
@@ -91,10 +98,8 @@ class KeplerOrbit(object):
             self.wRot = None
         
         if self.wRot is not None:
-            self.Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+            self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
         
-        
-        self.t_trans = self.t0
         if self.Porb is not None:
             self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
             if self.t_peri < 0:
@@ -107,33 +112,94 @@ class KeplerOrbit(object):
             
         return
     
-    
-    def solve_period(self):
-        """Find the Keplerian orbital period.
+    @property
+    def t_trans(self):
+        """float: Time of body 1's eclipse by body 2.
         
-        Returns:
-            float: The Keplerian orbital period.
+        Read-only.
+        
+        """
+        return self.t0
+    
+    @property
+    def m1(self):
+        """float: Body 1's mass in kg.
+        
+        If no period was provided when the orbit was initialized, this will update the period.
+        
+        """
+        return self._m1
+    
+    @property
+    def m2(self):
+        """float: Body 2's mass in kg.
+        
+        If no period was provided when the orbit was initialized, this will update the period.
+        
+        """
+        return self._m2
+    
+    @property
+    def Porb(self):
+        """float: Body 2's orbital period in days.
+        
+        This will update Prot if none was provided when the orbit was initialized.
+        
+        """
+        return self._Porb
+    
+    @property
+    def Prot(self):
+        """float: Body 2's rotational period in days."""
+        return self._Prot
+    
+    @property
+    def phase_periastron(self):
+        """float: The orbital phase of periastron.
+        
+        Read-only.
+        
+        """
+        return self.get_phase(self.t_peri)
+    
+    @property
+    def phase_transit(self):
+        """float: The orbital phase of transit.
+        
+        Read-only.
         
         """
         
-        return 2*np.pi*self.a**(3/2)/np.sqrt(const.G.value*(self.m1+self.m2))/(24*3600)
+        return 0
     
     
-    def set_Porb(self, Porb=None):
-        """Set the orbital period.
+    @property
+    def get_phase_eclipse(self):
+        """float: The orbital phase of eclipse.
         
-        Args:
-            Porb (float, optional): The orbital period in days. If Porb==None, solve for the Keplerian orbital period.
-        
-        Returns:
-            None
-        
+        Read-only.
+            
         """
         
-        if Porb == None:
+        return self.get_phase(self.t_ecl)
+    
+    @m1.setter
+    def m1(self, m1):
+        self._m1 = m1
+        if self.Porb_input is None:
             self.Porb = self.solve_period()
-        else:
-            self.Porb = Porb
+        return
+    
+    @m2.setter
+    def m2(self, m2):
+        self._m2 = m2
+        if self.Porb_input is None:
+            self.Porb = self.solve_period()
+        return
+    
+    @Porb.setter
+    def Porb(self, Porb):
+        self._Porb = Porb
             
         # Update self.Prot
         if self.Prot_input is None:
@@ -151,20 +217,13 @@ class KeplerOrbit(object):
                                  - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
         if self.t_ecl < 0:
             self.t_ecl = self.Porb + self.t_ecl
+            
+        self.mean_motion = 2*np.pi/self._Porb
     
         return
     
-    def set_Prot(self, Prot):
-        """Set body 2's rotational period.
-        
-        Args:
-            Prot (float): The rotational period in days.
-        
-        Returns:
-            None
-        
-        """
-        
+    @Prot.setter
+    def Prot(self, Prot):
         self.Prot_input = Prot
         
         # Update self.Prot
@@ -173,19 +232,20 @@ class KeplerOrbit(object):
         else:
             self.wRot = 1/(self.Prot_input*24*3600) # m/s
         
-        self.Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+        self._Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
     
         return
     
-    def mean_motion(self):
-        """Get the mean motion.
+    
+    def solve_period(self):
+        """Find the Keplerian orbital period.
         
         Returns:
-            float: The mean motion in radians.
-            
+            float: The Keplerian orbital period.
+        
         """
         
-        return 2*np.pi/self.Porb
+        return 2*np.pi*self.a**(3/2)/np.sqrt(const.G.value*(self.m1+self.m2))/(24*3600)
     
     def ta_to_ea(self, ta):
         """Convert true anomaly to eccentric anomaly.
@@ -238,7 +298,7 @@ class KeplerOrbit(object):
         
         """
         
-        return (t-self.t_peri) * self.mean_motion()
+        return (t-self.t_peri) * self.mean_motion
     
     
     def eccentric_anomaly(self, t, xtol=1e-10):
@@ -343,40 +403,6 @@ class KeplerOrbit(object):
         y = (np.cos(self.Omega*np.pi/180)*xtemp-np.sin(self.Omega*np.pi/180)*y)
         
         return x, y, z
-    
-    
-    def get_phase_periastron(self):
-        """Get the orbital phase of periastron.
-        
-        Returns:
-            float: The orbital phase of periastron.
-            
-        """
-        
-        return self.get_phase(self.t_peri)
-    
-    
-    def get_phase_transit(self):
-        """Get the orbital phase of transit.
-        
-        Returns:
-            float: The orbital phase of transit.
-            
-        """
-        
-        return 0
-    
-    
-    def get_phase_eclipse(self):
-        """Get the orbital phase of eclipse.
-        
-        Returns:
-            float: The orbital phase of eclipse.
-            
-        """
-        
-        return self.get_phase(self.t_ecl)
-    
     
     def get_phase(self, t):
         """Get the orbital phase.
