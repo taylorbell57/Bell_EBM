@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-28
+# Last Update: 2018-11-30
 
 import numpy as np
 import matplotlib
@@ -14,36 +14,26 @@ class Planet(object):
     """A planet.
 
     Attributes:
-        a (float): The planet's semi-major axis in m.
         absorptivity (float): The absorptivity of the emitting layer (between 0 and 1).
         albedo (float): The planet's Bond albedo.
-        argobliq (float): The reference orbital angle used for the obliquity (in degrees from inferior conjunction).
-        argp (float): The planet's argument of periastron (in degrees CCW from Omega).
         C (float, optional): The planet's heat capacity in J/m^2/K.
         cp (float or callable): The planet's isobaric specific heat capacity in J/kg/K.
         cpParams (iterable, optional): Any parameters to be passed to cp if using the bell2018 LTE H2+H mix cp
-        e (float): The planet's orbital eccentricity.
         emissivity (float): The emissivity of the emitting layer (between 0 and 1).
         g (float): The planet's surface gravity in m/s^2.
-        inc (float): The planet's orbial inclination (in degrees above face-on)
         map (Bell_EBM.Map): The planet's temperature map.
         mass (float): The planet's mass in kg.
         mlDensity (float): The density of the planet's mixed layer.
         mlDepth (float): The depth of the planet's mixed layer (in units of m for rock/water or Pa for gas/bell2018).
-        obliq (float): The planet's obliquity (axial tilt) (in degrees toward star).
-        Omega (float): The planet's longitude of ascending node (in degrees CCW from line-of-sight).
         orbit (Bell_EBM.KeplerOrbit): The planet's orbit.
         plType (str): The planet's composition.
         Porb (float): The planet's orbital period in days.
-        Prot (float): The planet's rotational period in days.
         rad (float): The planet's radius in m.
-        t0 (float): The planet's linear ephemeris in days.
         T_exponent (float): The exponent which determinges the rate at which the planet cools (4 for blackbody cooling,
             1 for Newtonian cooling) when calculating Fout with bolo=True.
         trasmissivity (float): The trasmissivity of the emitting layer (between 0 and 1).
         useHealpix (bool): Whether the planet's map uses a healpix grid.
-        vWind (float): The planet's wind velocity in m/s.
-    
+        
     """
     
     def __init__(self, plType='gas', rad=1, mass=1,
@@ -156,129 +146,165 @@ class Planet(object):
         
         #Map Attributes
         self.map = Map(nlat=nlat, nlon=nlon, useHealpix=useHealpix, nside=nside)
-                
-        #Orbital Attributes
-        self.a = a*const.au.value          # m
-        self.Porb = Porb                   # days (if None, will be set to Kepler expectation when loaded into system)
-        self.e = e                         # None
-        self.Omega = Omega                 # degrees ccw from line-of-sight
-        self.inc = inc                     # degrees above face-on
-        self.argp = argp                   # degrees ccw from Omega
-        self.obliq = obliq                 # degrees toward star
-        if self.obliq <= 90:
-            self.ProtSign = 1
-        else:
-            self.ProtSign = -1
-        self.argobliq = argobliq           # degrees from t0
-        self.t0 = t0                       # days
-        if self.Porb is not None:
-            self.orbit = KeplerOrbit(a=self.a, Porb=self.Porb, inc=self.inc, t0=self.t0, 
-                                     e=self.e, Omega=self.Omega, argp=self.argp, m2=self.mass)
-        else:
-            self.orbit = None
         
-        #Rotation Rate Attributes
-        if Prot is None:
-            self.Prot_input = self.Porb
+        if vWind == None:
+            wWind = 0
         else:
-            self.Prot_input = Prot               # days
-        if self.Prot_input is None:
-            self.vRot = 0
-        else:
-            self.vRot = 2*np.pi*self.rad/(self.Prot_input*24*3600) # m/s
-        self.vWind = vWind                 # m/s
-        if self.vWind == 0:
-            self.Prot = self.Prot_input
-        else:
-            self.Prot = 2*np.pi*self.rad/((self.vWind+self.vRot)*(24*3600))
+            wWind = vWind/(2*np.pi*self.rad)
+        
+        self.orbit = KeplerOrbit(a=a*const.au.value, Porb=Porb, inc=inc, t0=t0, e=e, Omega=Omega, argp=argp,
+                                 obliq=obliq, argobliq=argobliq, Prot=Prot, wWind=wWind,
+                                 m2=self.mass)
+        
+    def get_Porb(self):
+        return self.orbit.Porb
     
-    # Used to propogate any changes to the planet's attributes through the other attributes
-    def update(self):
-        """Update the planet's properties
+    # Make Porb accessible at the planet level for convenience. Dynamically reference it to make sure
+    # it stays up-to-date
+    Porb = property(get_Porb)
+    
+    
+    def get_Prot(self):
+        return self.orbit.Prot
+    
+    # Make Porb accessible at the planet level for convenience. Dynamically reference it to make sure
+    # it stays up-to-date
+    Prot = property(get_Prot)
+    
+    
+    def get_t0(self):
+        return self.orbit.t0
+    
+    # Make Porb accessible at the planet level for convenience. Dynamically reference it to make sure
+    # it stays up-to-date
+    t0 = property(get_t0)
+    
+    
+    def set_mass(self, mass):
+        """Update the planet's mass.
         
-        Used to propogate any manual changes to the planet's attributes through the other, dependent attributes.
+        Args:
+            mass (float): The planet's mass in Jupiter masses.
+        
+        Returns:
+            None
         
         """
         
+        self.mass = mass
+        
+        # Update dependent attributes
         g_old = self.g
         self.g = const.G.value*self.mass/self.rad**2
         
-        if self.plType.lower() == 'gas':
-            # H2 atmo
+        if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
             if self.mlDensity == 1/g_old:
                 self.mlDensity = 1/self.g        # s^2/m
             self.C = self.mlDepth*self.mlDensity*self.cp
-        elif self.plType.lower() == 'bell2018':
-            # LTE H2+H atmo
-            if self.mlDensity == 1/g_old:
-                self.mlDensity = 1/self.g        # s^2/m
-        else:
-            self.C = self.mlDepth*self.mlDensity*self.cp
-        
-        if self.Porb is not None and self.Prot is None:
-            self.Prot_input = self.Porb
-        
-        if self.Prot_input is not None:
-            self.vRot = 2*np.pi*self.rad/(self.Prot_input*24*3600) # m/s
-            if self.vWind == 0:
-                self.Prot = self.Prot_input
-            else:
-                self.Prot = 2*np.pi*self.rad/((self.vWind+self.vRot)*(24*3600))
-        
-#         if self.Porb is not None:
-#             self.orbit = KeplerOrbit(a=self.a, Porb=self.Porb, inc=self.inc, t0=self.t0, 
-#                                      e=self.e, Omega=self.Omega, argp=self.argp, m2=self.mass)
-    
-    def ssp(self, t):
-        """Calculate the sub-stellar longitude and latitude.
-        
-        Args:
-            t (ndarray): The time in days.
-        
-        Returns:
-            list: A list of 2 ndarrays containing the sub-stellar longitude and latitude.
                 
-                Each ndarray is in the same shape as t.
-        
-        """
-        
-        if type(t)!=np.ndarray:
-            t = np.array([t])
-            tshape = t.shape
-        elif len(t.shape)!=1:
-            tshape = t.shape
-            t = t.reshape(-1)
-        else:
-            tshape = t.shape
-        trueAnom = (self.orbit.true_anomaly(t)*180/np.pi)
-        trueAnom[trueAnom<0] += 360
-        sspLon = (trueAnom-(t-self.orbit.peri_time())/self.Prot*360)
-        sspLon = sspLon%180+(-180)*(np.rint(np.floor(sspLon%360/180) > 0))
-        sspLat = self.obliq*np.cos(t/self.Porb*2*np.pi-self.argobliq*np.pi/180)
-        return sspLon.reshape(tshape), sspLat.reshape(tshape)
-
-    def sop(self, t):
-        """Calculate the sub-observer longitude and latitude.
+        return
+    
+    
+    def set_rad(self, rad):
+        """Update the planet's radius.
         
         Args:
-            t (ndarray): The time in days.
+            mass (float): The planet's radius in Jupiter radii.
         
         Returns:
-            list: A list of 2 ndarrays containing the sub-observer longitude and latitude.
-            
-                Each ndarray is in the same shape as t.
+            None
         
         """
         
-        if type(t)!=np.ndarray:
-            t = np.array([t])
-        sopLon = 180-((t-self.orbit.t0)/self.Prot)*360
-        sopLon = sopLon%180+(-180)*(np.rint(np.floor(sopLon%360/180) > 0))
-        sopLat = 90-self.inc-self.obliq
-        return sopLon, sopLat
-
+        self.rad = rad
+        
+        # Update dependent attributes
+        g_old = self.g
+        self.g = const.G.value*self.mass/self.rad**2
+        
+        if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
+            if self.mlDensity == 1/g_old:
+                self.mlDensity = 1/self.g        # s^2/m
+            self.C = self.mlDepth*self.mlDensity*self.cp
+                
+        return
+    
+    
+    def set_mlDepth(self, mlDepth):
+        """Update the planet's mixed layer depth.
+        
+        Args:
+            mlDepth (float): The planet's mixed layer depth (in units of m for rock/water or Pa for gas/bell2018).
+        
+        Returns:
+            None
+        
+        """
+        
+        self.mlDepth = mlDepth
+        
+        # Update dependent properties
+        self.C = self.mlDepth*self.mlDensity*self.cp
+        
+        return
+    
+    def set_mlDensity(self, mlDensity):
+        """Update the planet's mixed layer density.
+        
+        Args:
+            mlDensity (float): The density of the planet's mixed layer (in kg/m^3) if rock/water models,
+                or the inverse of the planet's surface gravity (in s^2/m) for gas/bell2018 models.
+        
+        Returns:
+            None
+        
+        """
+        
+        self.mlDensity = mlDensity
+        
+        # Update dependent properties
+        self.C = self.mlDepth*self.mlDensity*self.cp
+        
+        return
+    
+    def set_cp(self, cp):
+        """Update the planet's isobaric specific heat capacity.
+        
+        Args:
+            cp (float or callable): The planet's isobaric specific heat capacity in J/kg/K.
+        
+        Returns:
+            None
+        
+        """
+        
+        self.cp = cp
+        
+        # Update dependent properties
+        if not callable(self.cp):
+            self.C = self.mlDepth*self.mlDensity*self.cp
+        
+        return
+    
+    
+    def set_Prot(self, Prot):
+        """Update the planet's rotational period.
+        
+        Args:
+            Prot (float): The planet's rotational period in days.
+        
+        Returns:
+            None
+        
+        """
+        
+        self.orbit.set_Prot(Prot)
+        
+        return
+    
+    
     def Fout(self, T=None, bolo=True, wav=1e-6):
-        """Calculate the instantaneous total outgoing flux.
+        """Calculate the instantaneous outgoing flux.
         
         Args:
             T (ndarray): The temperature (if None, use self.map.values).
@@ -321,9 +347,9 @@ class Planet(object):
             t = np.array([t]).reshape(-1,1)
         
         if refPos.lower() == 'ssp':
-            refLon, refLat = self.ssp(t)
+            refLon, refLat = self.orbit.get_ssp(t)
         elif refPos.lower() == 'sop':
-            refLon, refLat = self.sop(t)
+            refLon, refLat = self.orbit.get_sop(t)
         else:
             print('Reference point "'+str(refPos)+'" not understood!')
             return False
@@ -380,18 +406,18 @@ class Planet(object):
         
         if tempMap is None:
             if time is None:
-                subStellarLon = self.ssp(self.map.time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(self.map.time)[0].flatten()
             else:
-                subStellarLon = self.ssp(time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(time)[0].flatten()
         else:
             self.map.set_values(tempMap, time)
             if time is not None:
-                subStellarLon = self.ssp(time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(time)[0].flatten()
             else:
                 subStellarLon = None
         return self.map.plot_map(subStellarLon)
     
-    def plot_dissociation(self, tempMap=None, time=None):
+    def plot_H2_dissociation(self, tempMap=None, time=None):
         """A convenience routine to plot the planet's H2 dissociation map.
         
         Args:
@@ -405,14 +431,14 @@ class Planet(object):
         
         if tempMap is None:
             if time is None:
-                subStellarLon = self.ssp(self.map.time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(self.map.time)[0].flatten()
             else:
-                subStellarLon = self.ssp(time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(time)[0].flatten()
         else:
             self.map.set_values(tempMap, time)
             if time is not None:
-                subStellarLon = self.ssp(time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(time)[0].flatten()
             else:
                 subStellarLon = None
-        self.map.plot_dissociation(subStellarLon)
+        self.map.plot_H2_dissociation(subStellarLon)
         return plt.gcf()

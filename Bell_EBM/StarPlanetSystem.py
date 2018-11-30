@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-28
+# Last Update: 2018-11-30
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,21 +41,10 @@ class System(object):
         else:
             self.planet = planet
         
-        updatePlanet = False
-        if self.planet.Porb is None:
-            self.planet.orbit = KeplerOrbit(t0=self.planet.t0, a=self.planet.a, inc=self.planet.inc,
-                                            e=self.planet.e, Omega=self.planet.Omega, argp=self.planet.argp,
-                                            m1=self.star.mass, m2=self.planet.mass)
-            self.planet.Porb = self.planet.orbit.Porb
-            updatePlanet = True
-        if self.planet.Prot_input is None:
-            self.planet.Prot_input = self.planet.Porb
-            self.planet.Prot = self.planet.Porb
-            updatePlanet = True
-            
-        if updatePlanet:
-            planet.update()
-        
+        self.planet.orbit.m1 = self.star.mass
+        if self.planet.orbit.Porb is None:
+            self.planet.orbit.set_Porb()
+    
     def get_phase_periastron(self):
         """Get the orbital phase of periastron.
         
@@ -64,7 +53,8 @@ class System(object):
             
         """
         
-        return (self.planet.orbit.peri_time()/self.planet.Porb) % 1
+        return self.planet.orbit.get_phase_periastron()
+    
     
     def get_phase_transit(self):
         """Get the orbital phase of transit.
@@ -85,7 +75,8 @@ class System(object):
             
         """
         
-        return (self.planet.orbit.ecl_time()/self.planet.Porb) % 1
+        return self.planet.orbit.get_phase_eclipse()
+    
     
     def get_phase(self, t):
         """Get the orbital phase.
@@ -98,39 +89,7 @@ class System(object):
             
         """
         
-        return ((t-self.planet.t0)/self.planet.Porb) % 1
-    
-    def get_xyzPos(self, t):
-        """Get the x,y,z coordinate(s) of the planet.
-        
-        Args:
-            t (ndarray): The time in days.
-        
-        Returns:
-            list: A list of 3 ndarrays containing the x,y,z coordinate of the planet with respect to the star.
-            
-                The x coordinate is along the line-of-sight.
-                The y coordinate is perpendicular to the line-of-sight and in the orbital plane.
-                The z coordinate is perpendicular to the line-of-sight and above the orbital plane
-            
-        """
-        
-        return self.planet.orbit.xyz(t)
-    
-    def distance(self, t=0):
-        """Calculate the instantaneous separation between star and planet.
-        
-        Args:
-            t (ndarray, optional): The time in days.
-        
-        Returns:
-            ndarray: The separation between the star and planet in m.
-            
-        """
-        
-        if type(t)!=np.ndarray or len(t.shape)!=1:
-            t = np.array([t]).reshape(-1)
-        return self.planet.orbit.distance(t).reshape(-1,1)
+        return self.planet.orbit.get_phase(t)
     
     def get_teq(self, t=0):
         """Get the planet's equilibrium temperature.
@@ -154,7 +113,12 @@ class System(object):
             ndarray: The planet's irradiation temperature at time(s) t.
             
         """
-        dist = self.distance(t)
+        
+        if self.planet.orbit.e == 0:
+            dist = self.planet.orbit.a*np.ones_like(t)
+        else:
+            dist = self.planet.orbit.distance(t)
+        
         if type(t) == float or type(t) == int:
             dist = float(dist)
         
@@ -175,7 +139,13 @@ class System(object):
             
         """
         
-        return self.planet.absorptivity*self.star.Fstar(bolo, tStarBright, wav)/(np.pi*self.distance(t)**2)
+        # Just grab semi-major axis for circular orbits to speed things up
+        if self.planet.orbit.e == 0:
+            dist = self.planet.orbit.a*np.ones_like(t)
+        else:
+            dist = self.planet.orbit.distance(t)
+        
+        return self.planet.absorptivity*self.star.Fstar(bolo, tStarBright, wav)/(np.pi*dist**2)
 
     def Fin(self, t=0, bolo=True, tStarBright=None, wav=4.5e-6):
         """Calculate the instantaneous incident flux.
@@ -218,8 +188,8 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.t0+np.linspace(0, self.planet.Prot, 1000)
-            x = t/self.planet.Prot - np.rint(t[0]/self.planet.Prot)
+            t = self.planet.orbit.t0+np.linspace(0, self.planet.orbit.Prot, 1000)
+            x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
         
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array([t]).reshape(-1,1)
@@ -314,9 +284,9 @@ class System(object):
         if T0 is None:
             T0 = self.planet.map.values
         if t1 is None:
-            t1 = t0+self.planet.Porb
+            t1 = t0+self.planet.orbit.Porb
         if dt is None:
-            dt = self.planet.Porb/100.
+            dt = self.planet.orbit.Porb/100.
         
         r = scipy.integrate.ode(self.ODE)
         r.set_initial_value(T0, t0)
@@ -385,10 +355,10 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.t0+np.linspace(0, self.planet.Prot, 1000)
-            x = t/self.planet.Prot - np.rint(t[0]/self.planet.Prot)
+            t = self.planet.orbit.t0+np.linspace(0, self.planet.orbit.Prot, 1000)
+            x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
         else:
-            x = t/self.planet.Porb - np.rint(t[0]/self.planet.Porb)
+            x = t/self.planet.orbit.Porb - np.rint(t[0]/self.planet.orbit.Porb)
         
         if T is None:
             T = self.planet.map.values.reshape(1,-1)
@@ -406,17 +376,18 @@ class System(object):
         t = np.append(t[x>=0], t[x<0])
         lc = np.append(lc[x>=0], lc[x<0])
         x = np.append(x[x>=0], x[x<0]+1)
-        if self.planet.e != 0:
-            x *= self.planet.Porb
+        if self.planet.orbit.e != 0:
+            x *= self.planet.orbit.Porb
         
         plt.plot(x, lc)
-        plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label=r'$\rm Eclipse$')
-        if self.planet.e != 0 and self.get_phase_eclipse()!=self.get_phase_periastron():
-            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='-.', label=r'$\rm Periastron$')
+        plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
+        if self.planet.orbit.e != 0:
+            plt.gca().axvline(self.planet.orbit.t_peri,
+                              c='red', ls='-.', lw=2, label=r'$\rm Periastron$')
 
         plt.legend(loc=8, bbox_to_anchor=(0.5,1), ncol=2)
         plt.ylabel(r'$F_p/F_*\rm~(ppm)$')
-        if self.planet.e == 0:
+        if self.planet.orbit.e == 0:
             plt.xlabel(r'$\rm Orbital~Phase$')
         else:
             plt.xlabel(r'$\rm Time~from~Transit~(days)$')
@@ -445,10 +416,10 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.t0+np.linspace(0, self.planet.Prot, 1000)
-            x = t/self.planet.Prot - np.rint(t[0]/self.planet.Prot)
+            t = self.planet.orbit.t0+np.linspace(0, self.planet.orbit.Prot, 1000)
+            x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
         else:
-            x = t/self.planet.Porb - np.rint(t[0]/self.planet.Porb)
+            x = t/self.planet.orbit.Porb - np.rint(t[0]/self.planet.orbit.Porb)
         
         if T is None:
             T = self.planet.map.values.reshape(1,-1)
@@ -466,20 +437,21 @@ class System(object):
         t = np.append(t[x>=0], t[x<0])
         tc = np.append(tc[x>=0], tc[x<0])
         x = np.append(x[x>=0], x[x<0]+1)
-        if self.planet.e != 0:
-            x *= self.planet.Porb
+        if self.planet.orbit.e != 0:
+            x *= self.planet.orbit.Porb
         
         plt.plot(x, tc)
-        plt.gca().axvline(self.get_phase_eclipse()*np.max(x), c='k', ls='--', label=r'$\rm Eclipse$')
-        if self.planet.e != 0 and self.get_phase_eclipse()!=self.get_phase_periastron():
-            plt.gca().axvline(self.get_phase_periastron()*np.max(x), c='red', ls='-.', label=r'$\rm Periastron$')
+        plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
+        if self.planet.orbit.e != 0:
+            plt.gca().axvline(self.planet.orbit.t_peri,
+                              c='red', ls='-.', lw=2, label=r'$\rm Periastron$')
 
         plt.legend(loc=8, bbox_to_anchor=(0.5,1), ncol=2)
         if bolo:
             plt.ylabel(r'$T_{\rm eff, hemi, apparent}\rm~(K)$')
         else:
             plt.ylabel(r'$T_{\rm b, hemi, apparent}\rm~(K)$')
-        if self.planet.e == 0:
+        if self.planet.orbit.e == 0:
             plt.xlabel(r'$\rm Orbital~Phase$')
         else:
             plt.xlabel(r'$\rm Time~from~Transit~(days)$')

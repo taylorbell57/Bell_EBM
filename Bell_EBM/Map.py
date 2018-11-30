@@ -255,7 +255,7 @@ class Map(object):
         cbar.set_label(r'$\rm Temperature~(K)$')
         return plt.gcf()
     
-    def plot_dissociation(self, refLon=None):
+    def plot_H2_dissociation(self, refLon=None):
         """A convenience routine to plot the H2 dissociation map.
         
         Args:

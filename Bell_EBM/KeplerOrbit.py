@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-27
+# Last Update: 2018-11-30
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,10 +19,18 @@ class KeplerOrbit(object):
         argp (float): The argument of periastron (in degrees CCW from Omega).
         m1 (float): The mass of body 1 in kg.
         m2 (float): The mass of body 2 in kg.
+        obliq (float, optional): The obliquity (axial tilt) of body 2 (in degrees toward body 1).
+        argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
+        wWind (float, optional): Body 2's wind angular velocity in revolutions/s.
+        t_peri (float): Time of body 2's closest approach to body 1.
+        t_ecl (float): Time of body 2's eclipse by body 1.
+        t_trans (float): Time of body 1's eclipse by body 2.
     
     """
     
-    def __init__(self, a=const.au.value, Porb=None, inc=90, t0=0, e=0, Omega=270, argp=90, m1=const.M_sun.value, m2=0):
+    def __init__(self, a=const.au.value, Porb=None, inc=90, t0=0, e=0, Omega=270, argp=90, # orbital parameters
+                 obliq=0, argobliq=0, Prot=None, wWind=0, # spin parameters
+                 m1=const.M_sun.value, m2=0): # mass parameters
         """Initialization function.
         
         Args:
@@ -35,32 +43,139 @@ class KeplerOrbit(object):
             argp (float, optional): The argument of periastron (in degrees CCW from Omega).
             m1 (float, optional): The mass of body 1 in kg.
             m2 (float, optional): The mass of body 2 in kg.
+            obliq (float, optional): The obliquity (axial tilt) of body 2 (in degrees toward body 1).
+            argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
+            wWind (float, optional): The body 2's wind angular velocity in revolutions/s.
         
         """
         
         self.e = e
         self.a = a
-        self.inc = np.pi/2-inc*np.pi/180
-        self.Omega = Omega*np.pi/180
-        self.argp = argp*np.pi/180
+        self.inc = inc
+        self.Omega = Omega
+        self.argp = argp
         self.t0 = t0
         self.m1 = m1
         self.m2 = m2
         
-        if Porb is None:
-            self.Porb = self.period()
+        #Orbital Attributes
+        self.Porb_input = Porb
+        self.Porb = Porb
+        
+        # Obliquity Attributes
+        self.obliq = obliq                 # degrees toward star
+        self.argobliq = argobliq           # degrees from t0
+        if -90 <= self.obliq <= 90:
+            self.ProtSign = 1
         else:
-            self.Porb = Porb
+            self.ProtSign = -1
+        
+        #Rotation Rate Attributes
+        if Prot is not None:
+            self.Prot_input = Prot*self.ProtSign               # days
+        elif self.Porb is not None:
+            self.Prot_input = self.Porb*self.ProtSign
+        else:
+            self.Prot_input = None
+        
+        if wWind is None:
+            self.wWind = 0
+        else:
+            self.wWind = wWind                 # revolutions/s
+            
+        if self.Prot_input is not None:
+            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+        elif self.Porb is not None:
+            self.wRot = 1/(self.Porb*24*3600) # m/s
+        else:
+            self.wRot = None
+        
+        if self.wRot is not None:
+            self.Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+        
+        
+        self.t_trans = self.t0
+        if self.Porb is not None:
+            self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
+            if self.t_peri < 0:
+                self.t_peri = self.Porb + self.t_peri
+
+            self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180)
+                                     - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
+            if self.t_ecl < 0:
+                self.t_ecl = self.Porb + self.t_ecl
+            
+        return
     
-    def period(self):
-        """Find the keplerian orbital period.
+    
+    def solve_period(self):
+        """Find the Keplerian orbital period.
         
         Returns:
-            float: The keplerian orbital period.
+            float: The Keplerian orbital period.
         
         """
         
         return 2*np.pi*self.a**(3/2)/np.sqrt(const.G.value*(self.m1+self.m2))/(24*3600)
+    
+    
+    def set_Porb(self, Porb=None):
+        """Set the orbital period.
+        
+        Args:
+            Porb (float, optional): The orbital period in days. If Porb==None, solve for the Keplerian orbital period.
+        
+        Returns:
+            None
+        
+        """
+        
+        if Porb == None:
+            self.Porb = self.solve_period()
+        else:
+            self.Porb = Porb
+            
+        # Update self.Prot
+        if self.Prot_input is None:
+            self.wRot = 1/(self.Porb*self.ProtSign*24*3600) # m/s
+        else:
+            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+        
+        self.Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+    
+        self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180)/(2*np.pi)*self.Porb
+        if self.t_peri < 0:
+            self.t_peri = self.Porb + self.t_peri
+
+        self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180)
+                                 - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180))/(2*np.pi)*self.Porb)
+        if self.t_ecl < 0:
+            self.t_ecl = self.Porb + self.t_ecl
+    
+        return
+    
+    def set_Prot(self, Prot):
+        """Set body 2's rotational period.
+        
+        Args:
+            Prot (float): The rotational period in days.
+        
+        Returns:
+            None
+        
+        """
+        
+        self.Prot_input = Prot
+        
+        # Update self.Prot
+        if self.Prot_input is None:
+            self.wRot = 1/(self.Porb*self.ProtSign*24*3600) # m/s
+        else:
+            self.wRot = 1/(self.Prot_input*24*3600) # m/s
+        
+        self.Prot = 1/((self.wWind+self.wRot)*(24*3600)) # days
+    
+        return
     
     def mean_motion(self):
         """Get the mean motion.
@@ -111,35 +226,6 @@ class KeplerOrbit(object):
         
         return self.ea_to_ma(self.ta_to_ea(ta))
     
-    def peri_time(self):
-        """Get the time of periastron.
-        
-        Returns:
-           float: The time of periastron.
-           
-        """
-        
-        return self.t0-self.ta_to_ma(np.pi/2.-self.argp)/(2*np.pi)*self.Porb
-    
-    def trans_time(self):
-        """Get the time of transit.
-        
-        Returns:
-           float: The time of transit.
-           
-        """
-        
-        return self.t0
-    
-    def ecl_time(self):
-        """Get the time of secondary eclipse.
-        
-        Returns:
-           float: The time of secondary eclipse.
-           
-        """
-        
-        return (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp)-self.ta_to_ma(1.*np.pi/2.-self.argp))/(2*np.pi)*self.Porb)
     
     def mean_anomaly(self, t):
         """Convert time to mean anomaly.
@@ -152,7 +238,8 @@ class KeplerOrbit(object):
         
         """
         
-        return (t-self.peri_time()) * self.mean_motion()
+        return (t-self.t_peri) * self.mean_motion()
+    
     
     def eccentric_anomaly(self, t, xtol=1e-10):
         """Convert time to eccentric anomaly, numerically.
@@ -166,6 +253,11 @@ class KeplerOrbit(object):
         
         """
         
+        if type(t)!= np.ndarray:
+            t = np.array([t])
+        tShape = t.shape
+        t = t.flatten()
+        
         M = self.mean_anomaly(t)
         f = lambda E: E - self.e*np.sin(E) - M
         if self.e < 0.8:
@@ -173,7 +265,13 @@ class KeplerOrbit(object):
         else:
             E0 = np.pi*np.ones_like(M)
         E = scipy.optimize.fsolve(f, E0, xtol=xtol)
-        return E
+        
+        # Make some commonly used values exact
+        E[np.abs(E)<xtol] = 0
+        E[np.abs(E-2*np.pi)<xtol] = 2*np.pi
+        E[np.abs(E-np.pi)<xtol] = np.pi
+        
+        return E.reshape(tShape)
     
     def true_anomaly(self, t, xtol=1e-10):
         """Convert time to true anomaly, numerically.
@@ -201,7 +299,11 @@ class KeplerOrbit(object):
         
         """
         
-        return self.a*(1-self.e**2)/(1+self.e*np.cos(self.true_anomaly(t, xtol=xtol)))
+        if type(t)!=np.ndarray or len(t.shape)!=1:
+            t = np.array([t]).reshape(-1)
+        
+        distance = self.a*(1-self.e**2)/(1+self.e*np.cos(self.true_anomaly(t, xtol=xtol)))
+        return distance.reshape(-1,1)
     
     # Find the position of the planet at time t
     def xyz(self, t, xtol=1e-10):
@@ -228,19 +330,117 @@ class KeplerOrbit(object):
         Q = self.a*np.sin(E)*np.sqrt(1-self.e**2)
         
         # Rotate by argument of periapsis
-        x = (np.cos(self.argp-np.pi/2.)*P-np.sin(self.argp-np.pi/2.)*Q)
-        y = np.sin(self.argp-np.pi/2.)*P+np.cos(self.argp-np.pi/2.)*Q
+        x = (np.cos(self.argp*np.pi/180-np.pi/2.)*P-np.sin(self.argp*np.pi/180-np.pi/2.)*Q)
+        y = np.sin(self.argp*np.pi/180-np.pi/2.)*P+np.cos(self.argp*np.pi/180-np.pi/2.)*Q
         
         # Rotate by inclination
-        z = -np.sin(self.inc)*x
-        x = np.cos(self.inc)*x
+        z = -np.sin(np.pi/2-self.inc*np.pi/180)*x
+        x = np.cos(np.pi/2-self.inc*np.pi/180)*x
         
         # Rotate by longitude of ascending node
         xtemp = x
-        x = -(np.sin(self.Omega)*xtemp+np.cos(self.Omega)*y)
-        y = (np.cos(self.Omega)*xtemp-np.sin(self.Omega)*y)
+        x = -(np.sin(self.Omega*np.pi/180)*xtemp+np.cos(self.Omega*np.pi/180)*y)
+        y = (np.cos(self.Omega*np.pi/180)*xtemp-np.sin(self.Omega*np.pi/180)*y)
         
         return x, y, z
+    
+    
+    def get_phase_periastron(self):
+        """Get the orbital phase of periastron.
+        
+        Returns:
+            float: The orbital phase of periastron.
+            
+        """
+        
+        return self.get_phase(self.t_peri)
+    
+    
+    def get_phase_transit(self):
+        """Get the orbital phase of transit.
+        
+        Returns:
+            float: The orbital phase of transit.
+            
+        """
+        
+        return 0
+    
+    
+    def get_phase_eclipse(self):
+        """Get the orbital phase of eclipse.
+        
+        Returns:
+            float: The orbital phase of eclipse.
+            
+        """
+        
+        return self.get_phase(self.t_ecl)
+    
+    
+    def get_phase(self, t):
+        """Get the orbital phase.
+        
+        Args:
+            t (ndarray): The time in days.
+        
+        Returns:
+            ndarray: The orbital phase.
+            
+        """
+        
+        phase = (self.true_anomaly(t)-self.true_anomaly(self.t0))/(2*np.pi)
+        phase = phase + 1*(phase<0).astype(int)
+        return phase
+    
+    
+    def get_ssp(self, t):
+        """Calculate the sub-stellar longitude and latitude.
+        
+        Args:
+            t (ndarray): The time in days.
+        
+        Returns:
+            list: A list of 2 ndarrays containing the sub-stellar longitude and latitude.
+                
+                Each ndarray is in the same shape as t.
+        
+        """
+        
+        if type(t)!=np.ndarray:
+            t = np.array([t])
+            tshape = t.shape
+        elif len(t.shape)!=1:
+            tshape = t.shape
+            t = t.reshape(-1)
+        else:
+            tshape = t.shape
+        
+        sspLon = self.true_anomaly(t)*180/np.pi - (t-self.t0)/self.Prot*360 + self.Omega+self.argp
+        sspLon = sspLon%180+(-180)*(np.rint(np.floor(sspLon%360/180) > 0))
+        sspLat = self.obliq*np.cos(self.get_phase(t)*2*np.pi-self.argobliq*np.pi/180)
+        return sspLon.reshape(tshape), sspLat.reshape(tshape)
+
+    def get_sop(self, t):
+        """Calculate the sub-observer longitude and latitude.
+        
+        Args:
+            t (ndarray): The time in days.
+        
+        Returns:
+            list: A list of 2 ndarrays containing the sub-observer longitude and latitude.
+            
+                Each ndarray is in the same shape as t.
+        
+        """
+        
+        if type(t)!=np.ndarray:
+            t = np.array([t])
+        sopLon = 180-((t-self.t0)/self.Prot)*360
+        sopLon = sopLon%180+(-180)*(np.rint(np.floor(sopLon%360/180) > 0))
+        sopLat = 90-self.inc-self.obliq
+        return sopLon, sopLat
+    
     
     def plot_orbit(self):
         """A convenience routine to visualize the orbit
@@ -254,13 +454,9 @@ class KeplerOrbit(object):
 
         x, y, z = np.array(self.xyz(t))/const.au.value
 
-        tPeri = self.peri_time()
-        tTrans = self.trans_time()
-        tEcl = self.ecl_time()
-
-        xTrans, yTrans, zTrans = np.array(self.xyz(tTrans))/const.au.value
-        xEcl, yEcl, zEcl = np.array(self.xyz(tEcl))/const.au.value
-        xPeri, yPeri, zPeri = np.array(self.xyz(tPeri))/const.au.value
+        xTrans, yTrans, zTrans = np.array(self.xyz(self.t0))/const.au.value
+        xEcl, yEcl, zEcl = np.array(self.xyz(self.t_ecl))/const.au.value
+        xPeri, yPeri, zPeri = np.array(self.xyz(self.t_peri))/const.au.value
 
         plt.plot(y, x, '.', c='k', ms=2)
         plt.plot(0,0, '*', c='r', ms=15)
