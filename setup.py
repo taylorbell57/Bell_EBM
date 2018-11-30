@@ -7,12 +7,14 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name = name,
     version = __version__,
-    author = "Taylor Bell",
+    author = "Taylor James Bell",
     author_email = "taylor.bell@mail.mcgill.ca",
     description = "An object-oriented Energy Balance Model that can be used to model exoplanet observations.",
     long_description = long_description,
     long_description_content_type = "text/markdown",
     url = "https://github.com/taylorbell57/Bell_EBM",
+    license="MIT",
+    package_data={"": ["LICENSE"]},
     packages = setuptools.find_packages(),
     classifiers = (
         "Programming Language :: Python :: 2.7",
