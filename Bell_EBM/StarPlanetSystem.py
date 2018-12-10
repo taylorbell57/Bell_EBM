@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-30
+# Last Update: 2018-12-06
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -393,7 +393,7 @@ class System(object):
         plt.ylim(0)
         return plt.gcf()
     
-    def plot_tempcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6):
+    def plot_tempcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=False, allowThermal=True):
         """A convenience plotting routine to show the planet's phasecurve in units of temperature.
         
         Args:
@@ -406,6 +406,8 @@ class System(object):
                 or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
+            allowReflect (bool, optional): Account for the contribution from reflected light.
+            allowThermal (bool, optional): Account for the contribution from thermal emission.
         
         Returns:
             figure: The figure containing the plot.
@@ -426,7 +428,8 @@ class System(object):
         elif len(T.shape)==1:
             T = T.reshape(1,-1)
         
-        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav)
+        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav,
+                             allowReflect=allowReflect, allowThermal=allowThermal)
         tc = self.invert_lc(lc, bolo=bolo, tStarBright=tStarBright, wav=wav)
         
         t = t.flatten()

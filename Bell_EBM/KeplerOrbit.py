@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-30
+# Last Update: 2018-12-10
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -304,14 +304,15 @@ class KeplerOrbit(object):
         
         """
         
-        return (t-self.t_peri) * self.mean_motion
+        return ((t-self.t_peri) * self.mean_motion) % (2*np.pi)
     
     
-    def eccentric_anomaly(self, t, xtol=1e-10):
+    def eccentric_anomaly(self, t, useFSSI=None, xtol=1e-10):
         """Convert time to eccentric anomaly, numerically.
         
         Args:
             t (ndarray): The time in days.
+            useFSSI (bool): Whether or not to use FSSI to invert Kepler's equation.
             xtol (float): tolarance on error in eccentric anomaly.
         
         Returns:
@@ -324,13 +325,18 @@ class KeplerOrbit(object):
         tShape = t.shape
         t = t.flatten()
         
+        # Allow auto-switching for fast ODE runs and fast lightcurves
+        if useFSSI is None and t.size < 8:
+            useFSSI = False
+        elif useFSSI is None:
+            useFSSI = True
+        
         M = self.mean_anomaly(t)
-        f = lambda E: E - self.e*np.sin(E) - M
-        if self.e < 0.8:
-            E0 = M
+        
+        if useFSSI:
+            E = self.FSSI_Eccentric_Inverse(M, xtol)
         else:
-            E0 = np.pi*np.ones_like(M)
-        E = scipy.optimize.fsolve(f, E0, xtol=xtol)
+            E = self.Newton_Eccentric_Inverse(M, xtol)
         
         # Make some commonly used values exact
         E[np.abs(E)<xtol] = 0.
@@ -338,7 +344,88 @@ class KeplerOrbit(object):
         E[np.abs(E-np.pi)<xtol] = np.pi
         
         return E.reshape(tShape)
+        
+    def Newton_Eccentric_Inverse(self, M, xtol=1e-10):
+        """Convert mean anomaly to eccentric anomaly using Newton.
+        
+        Args:
+            M (ndarray): The mean anomaly in radians.
+            xtol (float): tolarance on error in eccentric anomaly.
+        
+        Returns:
+            ndarray: The eccentric anomaly in radians.
+        
+        """
+        
+        f = lambda E: E - self.e*np.sin(E) - M
+        if self.e < 0.8:
+            E0 = M
+        else:
+            E0 = np.pi*np.ones_like(M)
+        E = scipy.optimize.fsolve(f, E0, xtol=xtol)
+        
+        return E
     
+    def FSSI_Eccentric_Inverse(self, M, xtol=1e-10):
+        """Convert mean anomaly to eccentric anomaly using FSSI (Tommasini+2018).
+        
+        Args:
+            M (ndarray): The mean anomaly in radians.
+        
+        Returns:
+            ndarray: The eccentric anomaly in radians.
+        
+        """
+        
+        xtol = np.max([1e-15, xtol])
+        nGrid = (xtol/100)**(-1/4)
+        
+        xGrid = np.linspace(0, 2*np.pi, int(nGrid))
+        f = lambda ea: ea - self.e*np.sin(ea)
+        fP = lambda ea: 1. - self.e*np.cos(ea)
+        
+        return self.FSSI(M, x=xGrid, f=f, fP=fP)
+    
+    def FSSI(self, Y, x, f, fP):
+        """Fast Switch and Spline Inversion method from Tommasini+2018.
+        
+        Args:
+            Y (ndarray): The f(x) values to invert.
+            x (ndarray): x values spanning the domain (more values for higher precision).
+            f (callable): The function f.
+            fP (callable): The first derivative of the function f with respect to x.
+        
+        Returns:
+            ndarray: The numerical approximation of f^-(y).
+        
+        """
+        
+        y = f(x)
+        d = 1/fP(x)
+
+        x0 = x[:-1]
+        x1 = x[1:]
+        y0 = y[:-1]
+        y1 = y[1:]
+        d0 = d[:-1]
+        d1 = d[1:]
+
+        c0 = x0
+        c1 = d0
+
+        dx = x0 - x1
+        dy = y0 - y1
+        dy2 = dy*dy
+
+        c2 = ((2*d0 + d1)*dy - 3*dx)/dy2
+        c3 = ((d0 + d1)*dy - 2*dx)/(dy2*dy)
+
+        j = np.searchsorted(y1, Y)
+        P1 = Y - y0[j]
+
+        P2 = P1*P1
+        return c0[j] + c1[j]*P1 + c2[j]*P2 + c3[j]*P2*P1
+        
     def true_anomaly(self, t, xtol=1e-10):
         """Convert time to true anomaly, numerically.
         
@@ -371,7 +458,6 @@ class KeplerOrbit(object):
         distance = self.a*(1.-self.e**2.)/(1.+self.e*np.cos(self.true_anomaly(t, xtol=xtol)))
         return distance.reshape(-1,1)
     
-    # Find the position of the planet at time t
     def xyz(self, t, xtol=1e-10):
         """Find the coordinates of body 2 with respect to body 1.
         
