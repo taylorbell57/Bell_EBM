@@ -371,6 +371,7 @@ class KeplerOrbit(object):
         
         Args:
             M (ndarray): The mean anomaly in radians.
+            xtol (float): tolarance on error in eccentric anomaly.
         
         Returns:
             ndarray: The eccentric anomaly in radians.
