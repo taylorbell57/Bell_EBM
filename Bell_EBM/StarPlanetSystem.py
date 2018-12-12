@@ -304,13 +304,13 @@ class System(object):
             else:
                 maps = newMap
         
-        if not intermediates:
-            times = times[-1]
-            
         if verbose:
             print('Done!')
         
         self.planet.map.set_values(maps[-1], times[-1,0])
+        
+        if not intermediates:
+            times = times[-1]
         
         return times, maps
         
