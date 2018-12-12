@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-06
+# Last Update: 2018-12-12
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -122,11 +122,12 @@ class System(object):
         
         return self.star.teff*np.sqrt(self.star.rad/dist)
     
-    def Firr(self, t=0., bolo=True, tStarBright=None, wav=4.5e-6):
+    def Firr(self, t=0., TA=None, bolo=True, tStarBright=None, wav=4.5e-6):
         """Calculate the instantaneous irradiation.
         
         Args:
             t (ndarray, optional): The time in days.
+            TA (ndarray, optional): The true anomaly in radians.
             bolo (bool, optional): Determines whether computed flux is bolometric
                 (True, default) or wavelength dependent (False).
             tStarBright (ndarray): The stellar brightness temperature to use if bolo==False.
@@ -141,15 +142,18 @@ class System(object):
         if self.planet.orbit.e == 0:
             dist = self.planet.orbit.a*np.ones_like(t)
         else:
-            dist = self.planet.orbit.distance(t)
+            dist = self.planet.orbit.distance(t, TA)
+            
+        firr = self.planet.absorptivity*self.star.Fstar(bolo, tStarBright, wav)/(np.pi*dist**2)
         
-        return self.planet.absorptivity*self.star.Fstar(bolo, tStarBright, wav)/(np.pi*dist**2)
+        return firr
 
-    def Fin(self, t=0, bolo=True, tStarBright=None, wav=4.5e-6):
+    def Fin(self, t=0, TA=None, bolo=True, tStarBright=None, wav=4.5e-6):
         """Calculate the instantaneous incident flux.
         
         Args:
             t (ndarray, optional): The time in days.
+            TA (ndarray, optional): The true anomaly in radians.
             bolo (bool, optional): Determines whether computed flux is bolometric
                 (True, default) or wavelength dependent (False).
             tStarBright (ndarray): The stellar brightness temperature to use if bolo==False.
@@ -160,9 +164,7 @@ class System(object):
             
         """
         
-        if type(t)!=np.ndarray or len(t.shape)==1:
-            t = np.array([t]).reshape(-1,1)
-        return self.Firr(t, bolo, tStarBright, wav)*self.planet.weight(t)
+        return self.Firr(t, TA, bolo, tStarBright, wav)*self.planet.weight(t, TA)
 
     def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
         """Calculate the planet's lightcurve (ignoring any occultations).
@@ -204,7 +206,7 @@ class System(object):
             fp = np.zeros_like(t.flatten())
         
         if allowReflect:
-            fRefl = self.Fin(t, bolo, tStarBright, wav)
+            fRefl = self.Fin(t, None, bolo, tStarBright, wav)
             fRefl *= self.planet.albedo/self.planet.absorptivity # Get only the reflected portion
             fRefl = fRefl*self.planet.weight(t, refPos='SOP')*self.planet.map.pixArea*self.planet.rad**2
             fRefl = np.sum(fRefl, axis=1)
@@ -228,7 +230,7 @@ class System(object):
         """
         
         if bolo:
-            return (fp_fstar*self.star.Fstar(bolo=True)/(np.pi*self.planet.rad**2.)/const.sigma_sb.value)**0.25
+            return (fp_fstar*self.star.Fstar(bolo)/(np.pi*self.planet.rad**2.)/const.sigma_sb.value)**0.25
         else:
             if tStarBright is None:
                 tStarBright = self.star.teff
@@ -237,7 +239,7 @@ class System(object):
             c = 1  +  b/(fp_fstar/(self.planet.rad/self.star.rad)**2)
             return a*np.log(c)**-1
     
-    def ODE(self, t, T):
+    def ODE(self, t, T, TA=None):
         """The derivative in temperature with respect to time.
         
         Used by scipy.integrate.ode to update the map
@@ -245,13 +247,14 @@ class System(object):
         Args:
             t (ndarray): The time in days.
             T (ndarray): The temperature map with shape (self.planet.map.npix).
+            TA (ndarray, optional): The true anomaly in radians (much faster to compute if provided).
         
         Returns:
             ndarray: The derivative in temperature with respect to time.
             
         """
         
-        CdT_dt = (24.*3600.)*(self.Fin(t)-self.planet.Fout(T))
+        CdT_dt = (24.*3600.)*(self.Fin(t, TA)-self.planet.Fout(T))
         
         if not callable(self.planet.cp):
             C = self.planet.C
@@ -262,8 +265,7 @@ class System(object):
                 C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams))
         return CdT_dt/C
 
-    # Run the model - can be used to burn in temperature map or make a phasecurve
-    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True):
+    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False):
         """Evolve the planet's temperature map with time.
         
         Args:
@@ -272,7 +274,8 @@ class System(object):
             t0 (float, optional): The time corresponding to T0 (default is 0).
             t1 (float, optional): The end point of the run (default is 1 orbital period later).
             dt (float, optional): The time step used to evolve the map (default is 1/100 of the orbital period).
-            verbose (bool, optional): Output comments of the progress of the run (default = False).
+            verbose (bool, optional): Output comments of the progress of the run (default = False)?
+            intermediates (bool, optional): Output the map from every time step? Otherwise just returns the last step.
         
         Returns:
             list: A list of 2 ndarrays containing the time and map of each time step.
@@ -286,50 +289,31 @@ class System(object):
         if dt is None:
             dt = self.planet.orbit.Porb/100.
         
-        r = scipy.integrate.ode(self.ODE)
-        r.set_initial_value(T0, t0)
-
+        times = (t0 + np.arange(int(np.rint((t1-t0)/dt)))*dt)[:,np.newaxis]
+        TAs = list(self.planet.orbit.true_anomaly(times)[:,:,np.newaxis])
+        
         if verbose:
             print('Starting Run')
-        times = np.array([t0]).reshape(1,1)
         maps = np.array([T0]).reshape(1,-1)
         
-        with warnings.catch_warnings():
-            # Catch occasional, safe to ignore, and annoying warning
-            warnings.filterwarnings('ignore', 'The iteration is not making good progress')
-            
-            while r.successful() and r.t <= t1-dt:
-                times = np.append(times, np.array(r.t+dt).reshape(1,1), axis=0)
-                maps = np.append(maps, np.max(np.append(np.zeros((self.planet.map.npix,1)),
-                                              r.integrate(r.t+dt).reshape(-1,1), axis=1), axis=1).reshape(1,-1),
-                                 axis=0)
+        for i in range(1, len(times)):
+            newMap = (maps[-1]+self.ODE(times[i], maps[-1], TAs[i]).flatten()*dt).reshape(1,-1)
+            newMap[newMap<0] = 0
+            if intermediates:
+                maps = np.append(maps, newMap, axis=0)
+            else:
+                maps = newMap
         
-        if len(times) < np.floor((t1-t0)/dt):
-            if verbose:
-                print('Failed: Trying a smaller time step!')
-            dt /= 10.
-            times = np.array([t0]).reshape(1,1)
-            maps = np.array([T0]).reshape(1,-1)
+        if not intermediates:
+            times = times[-1]
             
-            with warnings.catch_warnings():
-                # Catch occasional, safe to ignore, and annoying warning
-                warnings.filterwarnings('ignore', 'The iteration is not making good progress')
-                
-                while r.successful() and r.t <= t1-dt:
-                    times = np.append(times, np.array(r.t+dt).reshape(1,1), axis=0)
-                    maps = np.append(maps, np.max(np.append(np.zeros((self.planet.map.npix,1)),
-                                                  r.integrate(r.t+dt).reshape(-1,1), axis=1), axis=1).reshape(1,-1),
-                                     axis=0)
-
-        if len(times) < np.floor((t1-t0)/dt):
-            print('Failed to run the model!')
         if verbose:
             print('Done!')
         
         self.planet.map.set_values(maps[-1], times[-1,0])
         
         return times, maps
-
+        
     def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
         """A convenience plotting routine to show the planet's phasecurve.
         

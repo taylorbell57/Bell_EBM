@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-10
+# Last Update: 2018-12-12
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -320,7 +320,7 @@ class KeplerOrbit(object):
         
         """
         
-        if type(t)!= np.ndarray:
+        if type(t) != np.ndarray:
             t = np.array([t])
         tShape = t.shape
         t = t.flatten()
@@ -441,11 +441,12 @@ class KeplerOrbit(object):
         
         return 2*np.arctan(np.sqrt((1+self.e)/(1-self.e))*np.tan(self.eccentric_anomaly(t, xtol=xtol)/2))
     
-    def distance(self, t, xtol=1e-10):
+    def distance(self, t=None, TA=None, xtol=1e-10):
         """Find the separation between the two bodies.
         
         Args:
             t (ndarray): The time in days.
+            TA (ndarray): The true anomaly in radians (if t and TA are given, only TA will be used).
             xtol (float): tolarance on error in eccentric anomaly (calculated along the way).
         
         Returns:
@@ -453,11 +454,12 @@ class KeplerOrbit(object):
         
         """
         
-        if type(t)!=np.ndarray or len(t.shape)!=1:
-            t = np.array([t]).reshape(-1)
+        if TA is None:
+            if t is None:
+                t = np.array([[0]])
+            TA = self.true_anomaly(t, xtol=xtol)
         
-        distance = self.a*(1.-self.e**2.)/(1.+self.e*np.cos(self.true_anomaly(t, xtol=xtol)))
-        return distance.reshape(-1,1)
+        return self.a*(1.-self.e**2.)/(1.+self.e*np.cos(TA))
     
     def xyz(self, t, xtol=1e-10):
         """Find the coordinates of body 2 with respect to body 1.
@@ -497,7 +499,7 @@ class KeplerOrbit(object):
         
         return x, y, z
     
-    def get_phase(self, t):
+    def get_phase(self, t, TA=None):
         """Get the orbital phase.
         
         Args:
@@ -508,12 +510,15 @@ class KeplerOrbit(object):
             
         """
         
-        phase = (self.true_anomaly(t)-self.true_anomaly(self.t0))/(2.*np.pi)
+        if TA is None:
+            TA = self.true_anomaly(t)
+        
+        phase = (TA-self.true_anomaly(self.t0))/(2.*np.pi)
         phase = phase + 1*(phase<0).astype(int)
         return phase
     
     
-    def get_ssp(self, t):
+    def get_ssp(self, t, TA=None):
         """Calculate the sub-stellar longitude and latitude.
         
         Args:
@@ -526,19 +531,14 @@ class KeplerOrbit(object):
         
         """
         
-        if type(t)!=np.ndarray:
-            t = np.array([t])
-            tshape = t.shape
-        elif len(t.shape)!=1:
-            tshape = t.shape
-            t = t.reshape(-1)
-        else:
-            tshape = t.shape
+        if TA is None:
+            TA = self.true_anomaly(t)
         
-        sspLon = self.true_anomaly(t)*180./np.pi - (t-self.t0)/self.Prot*360. + self.Omega+self.argp
+        sspLon = TA*180./np.pi - (t-self.t0)/self.Prot*360. + self.Omega+self.argp
         sspLon = sspLon%180+(-180.)*(np.rint(np.floor(sspLon%360/180.) > 0))
-        sspLat = self.obliq*np.cos(self.get_phase(t)*2*np.pi-self.argobliq*np.pi/180.)
-        return sspLon.reshape(tshape), sspLat.reshape(tshape)
+        sspLat = self.obliq*np.cos(self.get_phase(t, TA)*2*np.pi-self.argobliq*np.pi/180.)
+        
+        return sspLon, sspLat
 
     def get_sop(self, t):
         """Calculate the sub-observer longitude and latitude.
@@ -553,8 +553,6 @@ class KeplerOrbit(object):
         
         """
         
-        if type(t)!=np.ndarray:
-            t = np.array([t])
         sopLon = 180.-((t-self.t0)/self.Prot)*360.
         sopLon = sopLon%180+(-180.)*(np.rint(np.floor(sopLon%360/180.) > 0))
         sopLat = 90.-self.inc-self.obliq

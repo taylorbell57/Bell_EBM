@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-30
+# Last Update: 2018-12-12
 
 import numpy as np
 import matplotlib
@@ -336,13 +336,14 @@ class Planet(object):
             b = (const.h.value*const.c.value)/(wav*const.k_B.value)
             return self.emissivity*a/np.expm1(b/T)
         
-    def weight(self, t, refPos='SSP'):
+    def weight(self, t, TA=None, refPos='SSP'):
         """Calculate the weighting of map pixels.
         
         Weight flux by visibility/illumination kernel, assuming the star/observer are infinitely far away for now.
         
         Args:
             t (ndarray): The time in days.
+            EA (ndarray, optional): The eccentric anomaly in radians.
             refPos (str, optional): The reference position; SSP (sub-stellar point) or SOP (sub-observer point).
         
         Returns:
@@ -350,11 +351,13 @@ class Planet(object):
         
         """
         
-        if type(t)!=np.ndarray or len(t.shape)==1:
-            t = np.array([t]).reshape(-1,1)
+        if type(t)!=np.ndarray or t.shape==1:
+            t = np.array(t).reshape(-1,1)
+        if TA is not None and (type(TA)!=np.ndarray or TA.shape==1):
+            TA = np.array(TA).reshape(-1,1)
         
         if refPos.lower() == 'ssp':
-            refLon, refLat = self.orbit.get_ssp(t)
+            refLon, refLat = self.orbit.get_ssp(t, TA)
         elif refPos.lower() == 'sop':
             refLon, refLat = self.orbit.get_sop(t)
         else:
@@ -389,10 +392,7 @@ class Planet(object):
         if T is None:
             T = self.map.values
         
-        if type(t)!=np.ndarray or len(t.shape)==1:
-            t = np.array(t).reshape(-1,1)
-        
-        weights = self.weight(t, 'SOP')
+        weights = self.weight(t, refPos='SOP')
         flux = self.Fout(T, bolo, wav)*self.map.pixArea*self.rad**2
         # used to try to remove wiggles from finite number of pixels coming in and out of view
         weightsNormed = weights*(4.*np.pi/self.map.npix)/np.pi
