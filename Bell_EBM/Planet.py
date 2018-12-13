@@ -112,7 +112,7 @@ class Planet(object):
     
     
     
-    def __init__(self, plType='gas', rad=1.*const.R_jup.value, mass=1.*const.M_jup.value,
+    def __init__(self, plType='gas', rad=const.R_jup.value, mass=const.M_jup.value,
                  a=0.03*const.au.value, Porb=None, Prot=None, inc=90., t0=0., e=0., Omega=270., argp=90, obliq=0., argobliq=0.,
                  vWind=0., albedo=0., cp=None, cpParams=None, mlDepth=None, mlDensity=None, T_exponent=4.,
                  emissivity=1., trasmissivity=0., nlat=16, nlon=None, useHealpix=False, nside=7):
