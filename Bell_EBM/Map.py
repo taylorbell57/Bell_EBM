@@ -25,7 +25,7 @@ class Map(object):
     
     """
     
-    def __init__(self, values=None, time=0., nlat=16, nlon=None, useHealpix=False, nside=7):
+    def __init__(self, values=None, dissValues=None, time=0., nlat=16, nlon=None, useHealpix=False, nside=7):
         """Initialization funciton.
 
         Args:
@@ -96,8 +96,21 @@ class Map(object):
                 self.values = values
         else:
             self.values = np.zeros(self.npix)
+            
+        if dissValues is not None:
+            dissValues = np.array([dissValues]).reshape(-1)
+            if dissValues.size < self.npix:
+                print('Error: Too few map values ('+str(dissValues.size)+'!='+str(self.npix)+')')
+                return None
+            elif dissValues.size > self.npix:
+                print('Error: Too many map values ('+str(dissValues.size)+'!='+str(self.npix)+')')
+                return None
+            else:
+                self.dissValues = dissValues
+        else:
+            self.dissValues = np.zeros(self.npix)
     
-    def set_values(self, values, time=None):
+    def set_values(self, values, time=None, dissValues=None):
         """Set the temperature map.
         
         Args:
@@ -117,8 +130,20 @@ class Map(object):
             if time is not None:
                 self.time = time
             self.values = values
+        
+        if dissValues is not None:
+            dissValues = np.array([dissValues]).reshape(-1)
+            if dissValues.size < self.npix:
+                print('Error: Too few map values ('+str(dissValues.size)+'!='+str(self.npix)+')')
+                return None
+            elif dissValues.size > self.npix:
+                print('Error: Too many map values ('+str(dissValues.size)+'!='+str(self.npix)+')')
+                return None
+            else:
+                self.dissValues = dissValues
             
-    def load_custom_map(self, values, time=None, lat=None, lon=None, latGrid=None, lonGrid=None, pixArea=None):
+    def load_custom_map(self, values, dissValues=None, time=None, lat=None, lon=None,
+                        latGrid=None, lonGrid=None, pixArea=None):
         """Set the whole map object.
         
         Args:
@@ -213,6 +238,17 @@ class Map(object):
                     latArea = np.abs(2.*np.pi*(np.sin(latTop*np.pi/180.)-np.sin(latBot*np.pi/180.)))
                     areas = latArea.reshape(1,-1)*(np.abs(lonRight-lonLeft)/360.).reshape(-1,1)
                     self.pixArea = areas.reshape(1, -1)
+        
+        if dissValues is not None:
+            dissValues = np.array([dissValues]).reshape(-1)
+            if dissValues.size < self.npix:
+                print('Error: Too few map values ('+str(dissValues.size)+'!='+str(self.npix)+')')
+                return None
+            elif dissValues.size > self.npix:
+                print('Error: Too many map values ('+str(dissValues.size)+'!='+str(self.npix)+')')
+                return None
+            else:
+                self.dissValues = dissValues
     
     
     def plot_map(self, refLon=None):
@@ -229,7 +265,7 @@ class Map(object):
         if not self.useHealpix:
             tempMap = self.values.reshape((self.lat.size, self.lon.size), order='F')
             if refLon is not None:
-                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][0]-int(self.lon.size/2.))
+                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][-1]-int(self.lon.size/2.))
                 tempMap = np.roll(tempMap, rollCount, axis=1)
 
             im = plt.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90), origin='lower')
@@ -267,9 +303,9 @@ class Map(object):
         """
         
         if not self.useHealpix:
-            dissMap = h2.dissFracApprox(self.values.reshape((self.lat.size, self.lon.size), order='F'))*100.
+            dissMap = self.dissValues.reshape((self.lat.size, self.lon.size), order='F')*100.
             if refLon is not None:
-                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][0]-int(self.lon.size/2.))
+                rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][-1]-int(self.lon.size/2.))
                 dissMap = np.roll(dissMap, rollCount, axis=1)
 
             plt.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0, origin='lower')
@@ -283,7 +319,7 @@ class Map(object):
             current_cmap.set_bad(color='white')
             if refLon is None:
                 refLon = 0
-            im = hp.orthview(h2.dissFracApprox(self.values)*100., flip='geo', cmap='inferno', min=0,
+            im = hp.orthview(self.dissValues*100., flip='geo', cmap='inferno', min=0,
                              rot=(refLon, 0, 0), return_projected_map=True, cbar=None)
             plt.clf()
             plt.imshow(im, cmap='inferno', vmin=0)
