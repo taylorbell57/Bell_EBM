@@ -18,26 +18,48 @@ dissE = dissE/(mass*const.N_A.value) #converting to J/kg
 
 omegaRot = 85.4 #K
 
-def tau_chem(P, T):
-    """Calculate the dissociation/recombination timescale.
-
+def tau_diss(P, T):
+    """Calculate the dissociation timescale.
+    
+    These are rough estimates based on Shui (1973).
+    
     Args:
         T (ndarray): The temperature in K.
         P (ndarray): The pressure in Pa.
-
+    
     Returns:
-        ndarray: The dissociation/recombination timescale.
-
+        ndarray: The dissociation timescale in s^-1.
+    
     """
     
-    return 1e-3
+    kd = 10**((np.log10(3e-15) - np.log10(2e-11))/(3-1)*(T**-1*1e4-1) + np.log10(2e-11))
+    numberDensity = P/(const.k_B.value*T)/1e6 # molecules/cm^3
+    return (kd*numberDensity) # s^-1
+
+def tau_recomb(P, T):
+    """Calculate the recombination timescale.
+    
+    These are rough estimates based on Shui (1973).
+    
+    Args:
+        T (ndarray): The temperature in K.
+        P (ndarray): The pressure in Pa.
+    
+    Returns:
+        ndarray: The recombination timescale in s^-1.
+    
+    """
+    
+    kd = 2e-32/np.exp((T/7.44e3)**5)
+    numberDensity = P/(const.k_B.value*T)/1e6 # molecules/cm^3
+    return (kd*numberDensity**2) # s^-1
 
 def nQ(mu, T):
     """Calculate the quantum concentration.
 
     Args:
         mu (ndarray): The mean molecular weight in units of u.
-        T (ndarray): The temperature.
+        T (ndarray): The temperature in K.
 
     Returns:
         ndarray: The quantum concentration.
@@ -50,8 +72,8 @@ def dissFracSaha(T, P):
     """Calculate the dissociation fraction of H2 using the Saha Equation.
 
     Args:
-        T (ndarray): The temperature.
-        P (ndarray): The pressure.
+        T (ndarray): The temperature in K.
+        P (ndarray): The pressure in Pa.
 
     Returns:
         ndarray: The dissociation fraction of H2.
@@ -78,8 +100,8 @@ def dDissFracSaha(T, P):
     """Calculate the derivative of the dissociation fraction of H2 using the Saha Equation.
 
     Args:
-        T (ndarray): The temperature.
-        P (ndarray): The pressure
+        T (ndarray): The temperature in K.
+        P (ndarray): The pressure in Pa.
 
     Returns:
         ndarray: The derivative of the dissociation fraction of H2.
@@ -110,7 +132,7 @@ def dissFracApprox(T, mu=3320.680532597579, std=471.38088012739126):
     """Calculate the dissociation fraction of H2 using an erf approximation.
 
     Args:
-        T (ndarray): The temperature.
+        T (ndarray): The temperature in K.
         mu (float, optional): The mean for the error function.
         std (float, optional): The standard deviation for the error function.
 
@@ -125,7 +147,7 @@ def dDissFracApprox(T, mu=3320.680532597579, std=471.38088012739126):
     """Calculate the derivative in the dissociation fraction of H2 using an erf approximation.
 
     Args:
-        T (ndarray): The temperature.
+        T (ndarray): The temperature in K.
         mu (float, optional): The mean for the Gaussian function.
         std (float, optional): The standard deviation for the Gaussian function.
 
@@ -140,7 +162,7 @@ def getSahaApproxParams(P = 0.1*const.atm.value):
     """Get the Gaussian and erf parameters used to approximate the Saha equation.
 
     Args:
-        P (ndarray): The pressure.
+        P (ndarray): The pressure in Pa.
 
     Returns:
         list: 2 floats containing the mean and the standard deviatio for the Gaussian/erf functions.

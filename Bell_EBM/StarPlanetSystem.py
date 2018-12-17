@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-12
+# Last Update: 2018-12-17
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -250,7 +250,7 @@ class System(object):
     def ODE_EQ(self, t, T, dt, TA=None):
         """The derivative in temperature with respect to time.
         
-        Used by scipy.integrate.ode to update the map
+        This function neglects for the timescale of dissociation/recombination for bell2018 planets.
         
         Args:
             t (ndarray): The time in days.
@@ -281,14 +281,14 @@ class System(object):
         
         """
         
-        dDiss = h2.dissFracApprox(T0+dT)-chi0
+        dDiss = h2.dissFracApprox(T0+dT, *self.planet.cpParams)-chi0
         dT_diss = dDiss*h2.dissE*plug
         return (dE-(dT*cp*plug+dT_diss))**2
     
     def ODE_NEQ(self, t, T, dt, TA=None):
         """The derivative in temperature with respect to time.
         
-        Used by scipy.integrate.ode to update the map
+        This function accounts for the timescale of dissociation/recombination for bell2018 planets.
         
         Args:
             t (ndarray): The time in days.
@@ -304,27 +304,35 @@ class System(object):
         dt *= 24.*3600.
         
         plug = self.planet.mlDepth*self.planet.mlDensity
-        cp = h2.lte_cp(T)
+        cp = h2.lte_cp(T, *self.planet.cpParams)
         
         dEs = (self.Fin(t, TA)-self.planet.Fout(T)).flatten()*dt
         
+        C_EQ = self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams)
+        
         dTs = []
         for i in range(dEs.size):
-            dTs.append(spopt.minimize(self._find_dT, x0=dEs[i]/2./plug/cp[i],
+            dTs.append(spopt.minimize(self._find_dT, x0=dEs[i]/C_EQ[i],
                                       args=(dEs[i], T[i], self.planet.map.dissValues[i], plug, cp[i]),
                                       tol=0.001*plug*cp[i]).x[0])
         dTs = np.array(dTs)
-        dDiss = h2.dissFracApprox(T+dTs)-self.planet.map.dissValues
+        dDiss = h2.dissFracApprox(T+dTs, *self.planet.cpParams)-self.planet.map.dissValues
         
-        bad = np.where(dDiss > dt/h2.tau_chem(self.planet.mlDepth,T))
-        dDiss[bad] = dt/h2.tau_chem(self.planet.mlDepth,T)
+        maxDiss = dt*h2.tau_diss(self.planet.mlDepth,T)
+        bad = np.where(dDiss > maxDiss)
+        dDiss[bad] = maxDiss[bad]
+        dTs[bad] = dDiss[bad]*h2.dissE/cp[bad]-dEs[bad]/cp[bad]/plug
+        
+        maxRecomb = -dt*h2.tau_recomb(self.planet.mlDepth,T)
+        bad = np.where(dDiss < maxRecomb)
+        dDiss[bad] = maxRecomb[bad]
         dTs[bad] = dDiss[bad]*h2.dissE/cp[bad]-dEs[bad]/cp[bad]/plug
         
         self.planet.map.dissValues += dDiss
         
         return dTs
 
-    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False):
+    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False, progressBar=False):
         """Evolve the planet's temperature map with time.
         
         Args:
@@ -356,10 +364,16 @@ class System(object):
         maps = np.array([T0]).reshape(1,-1)
         
         # Soften the blow on the NEQ ODE
-        if self.planet.plType == 'bell2018' and self.neq and np.all(planet.map.dissValues) == 0.:
-            planet.map.dissValues = h2.dissFracApprox(T0.flatten())
+        if self.planet.plType == 'bell2018' and self.neq and np.all(self.planet.map.dissValues) == 0.:
+            self.planet.map.dissValues = h2.dissFracApprox(T0.flatten(), *self.planet.cpParams)
         
-        for i in range(1, len(times)):
+        if progressBar:
+            from tqdm import tnrange
+            iterator = tnrange
+        else:
+            iterator = range
+        
+        for i in iterator(1, len(times)):
             newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i]).flatten()).reshape(1,-1)
             newMap[newMap<0] = 0
             if intermediates:
@@ -369,7 +383,7 @@ class System(object):
         
         self.planet.map.set_values(maps[-1], times[-1,0])
         if self.planet.plType == 'bell2018' and not self.neq:
-            self.planet.map.dissValues = h2.dissFracApprox(self.planet.map.values)
+            self.planet.map.dissValues = h2.dissFracApprox(self.planet.map.values, *self.planet.cpParams)
         
         if not intermediates:
             times = times[-1]
@@ -407,7 +421,7 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            tMax = planet.orbit.Porb-(planet.orbit.Prot_input-planet.orbit.Prot)
+            tMax = self.planet.orbit.Porb-(self.planet.orbit.Prot_input-self.planet.orbit.Prot)
             t = self.planet.map.time+np.linspace(0., tMax, 1000)
             x = self.get_phase(t)*self.planet.orbit.Porb/tMax
         else:
@@ -476,7 +490,7 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            tMax = planet.orbit.Porb-(planet.orbit.Prot_input-planet.orbit.Prot)
+            tMax = self.planet.orbit.Porb-(self.planet.orbit.Prot_input-self.planet.orbit.Prot)
             t = self.planet.map.time+np.linspace(0., tMax, 1000)
             x = self.get_phase(t)*self.planet.orbit.Porb/tMax
         else:

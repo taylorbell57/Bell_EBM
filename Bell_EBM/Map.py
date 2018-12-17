@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-30
+# Last Update: 2018-12-17
 
 import numpy as np
 import matplotlib
@@ -11,6 +11,7 @@ class Map(object):
     """A map.
 
     Attributes:
+        dissValues (ndarray): The H2 dissociation fraction values for the map.
         lat (ndarray, optional): The unique latitude values in degrees.
         latGrid (ndarray): The latitude grid in degrees.
         lon (ndarray, optional): The unique longitude values in degrees.
@@ -31,6 +32,7 @@ class Map(object):
         Args:
             
             values(ndarray, optional): The temperature map values.
+            dissValues(ndarray, optional): The H2 dissociation fraction values for the map.
             time (float, optional): Time of map in days.
             nlat (int, optional): The number of latitudinal cells to use for rectangular maps.
             nlon (int, optional): The number of longitudinal cells to use for rectangular maps.
@@ -116,6 +118,7 @@ class Map(object):
         Args:
             values (ndarray): The map temperatures (in K) with a size of self.npix.
             time (float, optional): Time of map in days.
+            dissValues(ndarray, optional): The H2 dissociation fraction values for the map.
         
         """
         
@@ -148,6 +151,7 @@ class Map(object):
         
         Args:
             values (ndarray): The map temperatures (in K) with a size of self.npix.
+            dissValues(ndarray, optional): The H2 dissociation fraction values for the map.
             time (float, optional): Time of map in days.
             lat (ndarray, optional): The unique latitude values in degrees.
             lon (ndarray, optional): The unique longitude values in degrees.

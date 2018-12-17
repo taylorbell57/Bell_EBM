@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-12
+# Last Update: 2018-12-17
 
 import numpy as np
 import matplotlib
@@ -214,6 +214,8 @@ class Planet(object):
             if self.mlDepth == None:
                 self._mlDepth = 0.1e5           # Pa
             self._mlDensity = 1./self.g      # s^2/m
+            if self.cpParams is None:
+                self.cpParams = h2.getSahaApproxParams(self.mlDepth)
         else:
             print('Planet type not accepted!')
             return False
@@ -432,7 +434,8 @@ class Planet(object):
         """A convenience routine to plot the planet's H2 dissociation map.
         
         Args:
-            tempMap (ndarray, optional): The temperature map (if None, use self.map.values).
+            dissMap (ndarray, optional): The H2 dissociation fraction values for the map (if None,
+                use self.map.dissValues).
             time (float, optional): The time corresponding to the map used to de-rotate the map.
         
         Returns:
