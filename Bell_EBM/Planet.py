@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-12
+# Last Update: 2018-12-17
 
 import numpy as np
 import matplotlib
@@ -153,7 +153,7 @@ class Planet(object):
         """
         
         #Planet Attributes
-        self.plType = plType
+        self.plType = plType.lower()
         self._rad = rad   # m
         self._mass = mass # kg
         self.g = const.G.value*self.mass/self.rad**2 # m/s^2
@@ -180,7 +180,7 @@ class Planet(object):
             self.trasmissivity = trasmissivity
         
         # Planet's Thermal Attributes
-        if self.plType.lower()=='water':
+        if self.plType=='water':
             #water
             if self.cp == None:
                 self._cp = 4.1813e3             # J/kg/K
@@ -189,7 +189,7 @@ class Planet(object):
             if self.mlDensity == None:
                 self._mlDensity = 1e3           # kg/m^3
             self.C = self.mlDepth*self.mlDensity*self.cp
-        elif self.plType.lower() == 'rock':
+        elif self.plType == 'rock':
             #basalt
             if self.cp == None:
                 self._cp = 0.84e3                # J/kg/K
@@ -198,7 +198,7 @@ class Planet(object):
             if self.mlDensity == None:
                 self._mlDensity = 3e3            # kg/m^3
             self.C = self.mlDepth*self.mlDensity*self.cp
-        elif self.plType.lower() == 'gas':
+        elif self.plType == 'gas':
             # H2 atmo
             if self.cp == None:
                 self._cp = 14.31e3              # J/kg/K
@@ -207,13 +207,15 @@ class Planet(object):
             if self.mlDensity == None:
                 self._mlDensity = 1/self.g      # s^2/m
             self.C = self.mlDepth*self.mlDensity*self.cp
-        elif self.plType.lower() == 'bell2018':
+        elif self.plType == 'bell2018':
             # LTE H2+H atmo
             if self.cp == None:
                 self._cp = h2.true_cp
             if self.mlDepth == None:
                 self._mlDepth = 0.1e5           # Pa
             self._mlDensity = 1./self.g      # s^2/m
+            if self.cpParams is None:
+                self.cpParams = h2.getSahaApproxParams(self.mlDepth)
         else:
             print('Planet type not accepted!')
             return False
@@ -244,7 +246,6 @@ class Planet(object):
     @Prot.setter
     def Prot(self, Prot):
         self.orbit.Prot = Prot
-        
         return
     
     @mass.setter
@@ -411,24 +412,30 @@ class Planet(object):
         
         """
         
+        oldValues = self.map.values
         if tempMap is None:
             if time is None:
-                subStellarLon = self.orbit.get_ssp(self.map.time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(self.map.time)[0][0]
             else:
-                subStellarLon = self.orbit.get_ssp(time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(time)[0][0]
         else:
             self.map.set_values(tempMap, time)
             if time is not None:
-                subStellarLon = self.orbit.get_ssp(time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(time)[0][0]
             else:
                 subStellarLon = None
-        return self.map.plot_map(subStellarLon)
+        
+        fig = self.map.plot_map(subStellarLon)
+        self.map.set_values(oldValues, time)
+        
+        return fig
     
-    def plot_H2_dissociation(self, tempMap=None, time=None):
+    def plot_H2_dissociation(self, dissMap=None, time=None):
         """A convenience routine to plot the planet's H2 dissociation map.
         
         Args:
-            tempMap (ndarray, optional): The temperature map (if None, use self.map.values).
+            dissMap (ndarray, optional): The H2 dissociation fraction values for the map (if None,
+                use self.map.dissValues).
             time (float, optional): The time corresponding to the map used to de-rotate the map.
         
         Returns:
@@ -436,16 +443,23 @@ class Planet(object):
         
         """
         
-        if tempMap is None:
+        oldValues = self.map.values
+        oldDissValues = self.map.dissValues
+        oldTime = self.map.time
+        
+        if dissMap is None:
             if time is None:
-                subStellarLon = self.orbit.get_ssp(self.map.time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(self.map.time)[0][0]
             else:
-                subStellarLon = self.orbit.get_ssp(time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(time)[0][0]
         else:
-            self.map.set_values(tempMap, time)
+            self.map.set_values(oldValues, time, dissMap)
             if time is not None:
-                subStellarLon = self.orbit.get_ssp(time)[0].flatten()
+                subStellarLon = self.orbit.get_ssp(time)[0][0]
             else:
                 subStellarLon = None
-        self.map.plot_H2_dissociation(subStellarLon)
-        return plt.gcf()
+        
+        fig = self.map.plot_H2_dissociation(subStellarLon)
+        self.map.set_values(oldValues, oldTime, oldDissValues)
+        
+        return fig

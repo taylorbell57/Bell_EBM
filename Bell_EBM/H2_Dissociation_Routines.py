@@ -7,12 +7,59 @@ import numpy as np
 import astropy.constants as const
 import scipy.special
 
+cp_H = 20.78603/const.N_A.value/const.u.value # From NIST
+
+mass = 2*const.m_p.value
+
+dissE = 436e3 #J/mol (Bond-dissociation energy at 298 K)
+dissE = dissE - 3./2.*const.R.value*(298.)
+ionE = dissE/const.N_A.value
+dissE = dissE/(mass*const.N_A.value) #converting to J/kg
+
+omegaRot = 85.4 #K
+
+def tau_diss(P, T):
+    """Calculate the dissociation timescale.
+    
+    These are rough estimates based on Shui (1973).
+    
+    Args:
+        T (ndarray): The temperature in K.
+        P (ndarray): The pressure in Pa.
+    
+    Returns:
+        ndarray: The dissociation timescale in s^-1.
+    
+    """
+    
+    kd = 10**((np.log10(3e-15) - np.log10(2e-11))/(3-1)*(T**-1*1e4-1) + np.log10(2e-11))
+    numberDensity = P/(const.k_B.value*T)/1e6 # molecules/cm^3
+    return (kd*numberDensity) # s^-1
+
+def tau_recomb(P, T):
+    """Calculate the recombination timescale.
+    
+    These are rough estimates based on Shui (1973).
+    
+    Args:
+        T (ndarray): The temperature in K.
+        P (ndarray): The pressure in Pa.
+    
+    Returns:
+        ndarray: The recombination timescale in s^-1.
+    
+    """
+    
+    kd = 2e-32/np.exp((T/7.44e3)**5)
+    numberDensity = P/(const.k_B.value*T)/1e6 # molecules/cm^3
+    return (kd*numberDensity**2) # s^-1
+
 def nQ(mu, T):
     """Calculate the quantum concentration.
 
     Args:
         mu (ndarray): The mean molecular weight in units of u.
-        T (ndarray): The temperature.
+        T (ndarray): The temperature in K.
 
     Returns:
         ndarray: The quantum concentration.
@@ -25,20 +72,13 @@ def dissFracSaha(T, P):
     """Calculate the dissociation fraction of H2 using the Saha Equation.
 
     Args:
-        T (ndarray): The temperature.
-        P (ndarray): The pressure
+        T (ndarray): The temperature in K.
+        P (ndarray): The pressure in Pa.
 
     Returns:
         ndarray: The dissociation fraction of H2.
 
     """
-    
-    mass = 2.*const.m_p.value
-    dissE = 436e3 #J/mol (Bond-dissociation energy at 298 K)
-    dissE = dissE - 3./2.*const.R.value*(298.)
-    ionE = dissE/const.N_A.value
-    dissE = dissE/(mass*const.N_A.value) #converting to J/kg
-    omegaRot = 85.4 #K
     
     if type(T)!=np.ndarray:
         T = np.array([T])
@@ -60,20 +100,13 @@ def dDissFracSaha(T, P):
     """Calculate the derivative of the dissociation fraction of H2 using the Saha Equation.
 
     Args:
-        T (ndarray): The temperature.
-        P (ndarray): The pressure
+        T (ndarray): The temperature in K.
+        P (ndarray): The pressure in Pa.
 
     Returns:
         ndarray: The derivative of the dissociation fraction of H2.
 
     """
-    
-    mass = 2.*const.m_p.value
-    dissE = 436e3 #J/mol (Bond-dissociation energy at 298 K)
-    dissE = dissE - 3./2.*const.R.value*(298.)
-    ionE = dissE/const.N_A.value
-    dissE = dissE/(mass*const.N_A.value) #converting to J/kg
-    omegaRot = 85.4 #K
     
     if type(T)!=np.ndarray:
         T = np.array([T])
@@ -99,7 +132,7 @@ def dissFracApprox(T, mu=3320.680532597579, std=471.38088012739126):
     """Calculate the dissociation fraction of H2 using an erf approximation.
 
     Args:
-        T (ndarray): The temperature.
+        T (ndarray): The temperature in K.
         mu (float, optional): The mean for the error function.
         std (float, optional): The standard deviation for the error function.
 
@@ -114,7 +147,7 @@ def dDissFracApprox(T, mu=3320.680532597579, std=471.38088012739126):
     """Calculate the derivative in the dissociation fraction of H2 using an erf approximation.
 
     Args:
-        T (ndarray): The temperature.
+        T (ndarray): The temperature in K.
         mu (float, optional): The mean for the Gaussian function.
         std (float, optional): The standard deviation for the Gaussian function.
 
@@ -129,19 +162,12 @@ def getSahaApproxParams(P = 0.1*const.atm.value):
     """Get the Gaussian and erf parameters used to approximate the Saha equation.
 
     Args:
-        P (ndarray): The pressure.
+        P (ndarray): The pressure in Pa.
 
     Returns:
         list: 2 floats containing the mean and the standard deviatio for the Gaussian/erf functions.
 
     """
-    
-    mass = 2.*const.m_p.value
-    dissE = 436e3 #J/mol (Bond-dissociation energy at 298 K)
-    dissE = dissE - 3./2.*const.R.value*(298.)
-    ionE = dissE/const.N_A.value
-    dissE = dissE/(mass*const.N_A.value) #converting to J/kg
-    omegaRot = 85.4 #K
     
     a = (np.pi*const.m_p.value*const.k_B.value*const.h.value**-2)**(-3/2)/(2*omegaRot)/const.k_B.value
     b = ionE/const.k_B.value
@@ -169,9 +195,12 @@ def cp_H2(T):
     
     if type(T)!=np.ndarray:
         T = np.array([T])
+    else:
+        T = T.copy()
     
     #Below ~71 K, cp_H2 equation gives negative values
-    T[T<=71] = 71.
+#     T[T<=71] = 71.
+    T[T<=100] = 100
     
     A = np.array([33.066178, 18.563083, 43.413560])[np.newaxis,:] # From NIST
     B = np.array([-11.363417, 12.257357, -4.293079])[np.newaxis,:] # From NIST
@@ -205,9 +234,12 @@ def delta_cp_H2(T):
     #
     if type(T)!=np.ndarray:
         T = np.array([T])
+    else:
+        T = T.copy()
     
     #Below 71 K, cp_H2 equation gives negative values
-    T[T<=71] = 71.
+#     T[T<=71] = 71.
+    T[T<=100] = 100
 
     B = np.array([-11.363417, 12.257357, -4.293079])[np.newaxis,:] # From NIST
     C = np.array([11.432816, -2.859786, 1.272428])[np.newaxis,:] # From NIST
@@ -223,9 +255,29 @@ def delta_cp_H2(T):
     dcp_H2 = dcp_H2/const.N_A.value/(2*const.u.value)
     
     #Below 70 K, cp_H2 equation gives negative values
-    dcp_H2[T <= 71] = 0.
+#     dcp_H2[T <= 71] = 0.
+    dcp_H2[T<=100] = 0.
 
     return dcp_H2
+
+# The LTE Heat Capacity of Hydrogen Gas as a Function of Temperature
+def lte_cp(T, mu=3320.680532597579, std=471.38088012739126):
+    """Get the isobaric specific heat capacity of an LTE mix of H2+H as a function of temperature.
+    
+    Does not account for the energy of H2 dissociation/recombination.
+
+    Args:
+        T (ndarray): The temperature.
+        mu (float): The mean for the Gaussian/erf approximations to the Saha equation.
+        std (float): The standard deviation for the Gaussian/erf approximations to the Saha equation.
+
+    Returns:
+        ndarray: The isobaric specific heat capacity of an LTE mix of H2+H.
+
+    """
+    
+    chi = dissFracApprox(T, mu, std)
+    return chi*cp_H + (1-chi)*cp_H2(T)
 
 # The LTE Heat Capacity of Hydrogen Gas as a Function of Temperature
 def true_cp(T, mu=3320.680532597579, std=471.38088012739126):
@@ -242,13 +294,6 @@ def true_cp(T, mu=3320.680532597579, std=471.38088012739126):
         ndarray: The isobaric specific heat capacity of an LTE mix of H2+H.
 
     """
-    
-    cp_H = 20.78603/const.N_A.value/const.u.value # From NIST
-    mass = 2*const.m_p.value
-    dissE = 436e3 #J/mol (Bond-dissociation energy at 298 K)
-    dissE = dissE - 3./2.*const.R.value*(298.)
-    ionE = dissE/const.N_A.value
-    dissE = dissE/(mass*const.N_A.value) #converting to J/kg
     
     chi = dissFracApprox(T, mu, std)
     dChi = dDissFracApprox(T, mu, std)
