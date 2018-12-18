@@ -255,6 +255,7 @@ class System(object):
         Args:
             t (ndarray): The time in days.
             T (ndarray): The temperature map with shape (self.planet.map.npix).
+            dt (float): The time step in days.
             TA (ndarray, optional): The true anomaly in radians (much faster to compute if provided).
         
         Returns:
@@ -332,7 +333,7 @@ class System(object):
         
         return dTs
 
-    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False, progressBar=False):
+    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False, progressBar=False, minTemp=0):
         """Evolve the planet's temperature map with time.
         
         Args:
@@ -343,6 +344,8 @@ class System(object):
             dt (float, optional): The time step used to evolve the map (default is 1/100 of the orbital period).
             verbose (bool, optional): Output comments of the progress of the run (default = False)?
             intermediates (bool, optional): Output the map from every time step? Otherwise just returns the last step.
+            progressBar (bool, optional): Show a progress bar for the run (nice for long runs).
+            minTemp (float, optional): The minimum allowable temperature (can be used to vaguely mimick internal heating).
         
         Returns:
             list: A list of 2 ndarrays containing the time and map of each time step.
@@ -375,7 +378,7 @@ class System(object):
         
         for i in iterator(1, len(times)):
             newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i]).flatten()).reshape(1,-1)
-            newMap[newMap<0] = 0
+            newMap[newMap<minTemp] = minTemp
             if intermediates:
                 maps = np.append(maps, newMap, axis=0)
             else:
@@ -444,8 +447,10 @@ class System(object):
                              allowThermal=allowThermal)*1e6
         
         plt.plot(x, lc)
-        plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
+        if self.planet.orbit.e == 0:
+            plt.gca().axvline(self.get_phase_eclipse(), c='k', ls='--', label=r'$\rm Eclipse$')
         if self.planet.orbit.e != 0:
+            plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
             plt.gca().axvline(self.planet.orbit.t_peri,
                               c='red', ls='-.', lw=2, label=r'$\rm Periastron$')
 
@@ -514,8 +519,11 @@ class System(object):
         tc = self.invert_lc(lc, bolo=bolo, tStarBright=tStarBright, wav=wav)
         
         plt.plot(x, tc)
-        plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
+        
+        if self.planet.orbit.e == 0:
+            plt.gca().axvline(self.get_phase_eclipse(), c='k', ls='--', label=r'$\rm Eclipse$')
         if self.planet.orbit.e != 0:
+            plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
             plt.gca().axvline(self.planet.orbit.t_peri,
                               c='red', ls='-.', lw=2, label=r'$\rm Periastron$')
 
