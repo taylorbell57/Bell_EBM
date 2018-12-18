@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-17
+# Last Update: 2018-12-18
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -434,15 +434,17 @@ class System(object):
         if self.planet.orbit.e != 0:
             x *= self.planet.orbit.Porb
         
-        order = np.argsort(x)
-        x = x[order]
-        t = t[order]
-        
         if T is None:
             T = self.planet.map.values.reshape(1,-1)
         elif type(T)!=np.ndarray or len(T.shape)==1:
             T = np.array([T]).reshape(1,-1)
-
+        
+        order = np.argsort(x)
+        x = x[order]
+        t = t[order]
+        if T.shape[0] != 1:
+            T = T[order]
+        
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav, allowReflect=allowReflect,
                              allowThermal=allowThermal)*1e6
         
@@ -505,14 +507,16 @@ class System(object):
         if self.planet.orbit.e != 0:
             x *= self.planet.orbit.Porb
         
-        order = np.argsort(x)
-        x = x[order]
-        t = t[order]
-        
         if T is None:
             T = self.planet.map.values.reshape(1,-1)
         elif type(T)!=np.ndarray or len(T.shape)==1:
             T = np.array([T]).reshape(1,-1)
+        
+        order = np.argsort(x)
+        x = x[order]
+        t = t[order]
+        if T.shape[0] != 1:
+            T = T[order]
         
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav,
                              allowReflect=allowReflect, allowThermal=allowThermal)
