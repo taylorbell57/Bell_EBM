@@ -37,6 +37,11 @@ Indices and tables
 .. * :ref:`search`
 
 
+Acknowledgements
+================
+
+Thank you to Lisa Dang for beta-testing the package!
+
 License & Attribution
 =====================
 

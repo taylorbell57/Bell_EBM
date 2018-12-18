@@ -239,14 +239,15 @@ class System(object):
             c = 1  +  b/(fp_fstar/(self.planet.rad/self.star.rad)**2)
             return a*np.log(c)**-1
     
-    def ODE(self, t, T, TA=None):
+    def ODE(self, t, T, dt, TA=None):
         """The derivative in temperature with respect to time.
         
-        Used by scipy.integrate.ode to update the map
+        This function neglects for the timescale of dissociation/recombination for bell2018 planets.
         
         Args:
             t (ndarray): The time in days.
             T (ndarray): The temperature map with shape (self.planet.map.npix).
+            dt (float): The time step in days.
             TA (ndarray, optional): The true anomaly in radians (much faster to compute if provided).
         
         Returns:
@@ -254,7 +255,9 @@ class System(object):
             
         """
         
-        CdT_dt = (24.*3600.)*(self.Fin(t, TA)-self.planet.Fout(T))
+        dt *= 24.*3600.
+        
+        dEs = (self.Fin(t, TA)-self.planet.Fout(T))*dt
         
         if not callable(self.planet.cp):
             C = self.planet.C
@@ -263,9 +266,10 @@ class System(object):
                 C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T))
             else:
                 C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams))
-        return CdT_dt/C
+        
+        return dEs/C
 
-    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False):
+    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False, progressBar=False, minTemp=0):
         """Evolve the planet's temperature map with time.
         
         Args:
@@ -276,6 +280,8 @@ class System(object):
             dt (float, optional): The time step used to evolve the map (default is 1/100 of the orbital period).
             verbose (bool, optional): Output comments of the progress of the run (default = False)?
             intermediates (bool, optional): Output the map from every time step? Otherwise just returns the last step.
+            progressBar (bool, optional): Show a progress bar for the run (nice for long runs).
+            minTemp (float, optional): The minimum allowable temperature (can be used to vaguely mimick internal heating).
         
         Returns:
             list: A list of 2 ndarrays containing the time and map of each time step.
@@ -296,15 +302,23 @@ class System(object):
             print('Starting Run')
         maps = np.array([T0]).reshape(1,-1)
         
-        for i in range(1, len(times)):
-            newMap = (maps[-1]+self.ODE(times[i], maps[-1], TAs[i]).flatten()*dt).reshape(1,-1)
-            newMap[newMap<0] = 0
+        if progressBar:
+            from tqdm import tnrange
+            iterator = tnrange
+        else:
+            iterator = range
+        
+        for i in iterator(1, len(times)):
+            newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i]).flatten()).reshape(1,-1)
+            newMap[newMap<minTemp] = minTemp
             if intermediates:
                 maps = np.append(maps, newMap, axis=0)
             else:
                 maps = newMap
         
         self.planet.map.set_values(maps[-1], times[-1,0])
+        if self.planet.plType == 'bell2018':
+            self.planet.map.dissValues = h2.dissFracApprox(self.planet.map.values, *self.planet.cpParams)
         
         if not intermediates:
             times = times[-1]
@@ -316,7 +330,7 @@ class System(object):
         
     def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
         """A convenience plotting routine to show the planet's phasecurve.
-        
+
         Args:
             t (ndarray, optional): The time in days with shape (t.size,1).  If None, will use 1000
                 time steps around orbit.
@@ -329,41 +343,46 @@ class System(object):
             wav (float, optional): The wavelength to use if bolo==False.
             allowReflect (bool, optional): Account for the contribution from reflected light.
             allowThermal (bool, optional): Account for the contribution from thermal emission.
-        
+
         Returns:
             figure: The figure containing the plot.
-            
+
         """
+        
+        if self.planet.orbit.e != 0. and (T is None or t is None):
+            print('Warning: Maps and times must be entered for eccentric planets. Failing to do so'+
+                  ' will result in non-sensical lightcurves.')
+            return None
         
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.orbit.t0+np.linspace(0., self.planet.orbit.Prot, 1000)
-            x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
+            tMax = self.planet.orbit.Porb-(self.planet.orbit.Prot_input-self.planet.orbit.Prot)
+            t = self.planet.map.time+np.linspace(0., tMax, 1000)
+            x = self.get_phase(t)*self.planet.orbit.Porb/tMax
         else:
-            x = t/self.planet.orbit.Porb - np.rint(t[0]/self.planet.orbit.Porb)
+            t = t.flatten()
+            x = self.get_phase(t)
         
-        if T is None:
-            T = self.planet.map.values.reshape(1,-1)
-        elif type(T)!=np.ndarray:
-            T = np.array([T]).reshape(1,-1)
-        elif len(T.shape)==1:
-            T = T.reshape(1,-1)
-        
-        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav, allowReflect=allowReflect,
-                             allowThermal=allowThermal)*1e6
-
-        t = t.flatten()
-        x = x.flatten()
-        
-        t = np.append(t[x>=0], t[x<0])
-        lc = np.append(lc[x>=0], lc[x<0])
-        x = np.append(x[x>=0], x[x<0]+1)
         if self.planet.orbit.e != 0:
             x *= self.planet.orbit.Porb
         
+        order = np.argsort(x)
+        x = x[order]
+        t = t[order]
+        
+        if T is None:
+            T = self.planet.map.values.reshape(1,-1)
+        elif type(T)!=np.ndarray or len(T.shape)==1:
+            T = np.array([T]).reshape(1,-1)
+
+        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav, allowReflect=allowReflect,
+                             allowThermal=allowThermal)*1e6
+        
         plt.plot(x, lc)
-        plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
+        if self.planet.orbit.e == 0:
+            plt.gca().axvline(self.get_phase_eclipse(), c='k', ls='--', label=r'$\rm Eclipse$')
         if self.planet.orbit.e != 0:
+            plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
             plt.gca().axvline(self.planet.orbit.t_peri,
                               c='red', ls='-.', lw=2, label=r'$\rm Periastron$')
 
@@ -373,7 +392,10 @@ class System(object):
             plt.xlabel(r'$\rm Orbital~Phase$')
         else:
             plt.xlabel(r'$\rm Time~from~Transit~(days)$')
-        plt.xlim(np.min(x), np.max(x))
+        if self.planet.orbit.e != 0:
+            plt.xlim(0, self.planet.Porb)
+        else:
+            plt.xlim(0, 1)
         plt.ylim(0)
         return plt.gcf()
     
@@ -382,10 +404,10 @@ class System(object):
         
         Args:
             t (ndarray, optional): The time in days with shape (t.size,1).  If None, will use 1000
-                time steps around orbit.
+                time steps around orbit. Must be provided for eccentric planets.
             T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix) if
                 the map is constant or (t.size,self.planet.map.npix). If None, use
-                self.planet.map.values instead.
+                self.planet.map.values instead. Must be provided for eccentric planets.
             bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
                 or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
@@ -398,36 +420,42 @@ class System(object):
             
         """
         
+        if self.planet.orbit.e != 0. and (T is None or t is None):
+            print('Warning: Maps and times must be entered for eccentric planets. Failing to do so'+
+                  ' will result in non-sensical lightcurves.')
+            return None
+        
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.orbit.t0+np.linspace(0., self.planet.orbit.Prot, 1000)
-            x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
+            tMax = self.planet.orbit.Porb-(self.planet.orbit.Prot_input-self.planet.orbit.Prot)
+            t = self.planet.map.time+np.linspace(0., tMax, 1000)
+            x = self.get_phase(t)*self.planet.orbit.Porb/tMax
         else:
-            x = t/self.planet.orbit.Porb - np.rint(t[0]/self.planet.orbit.Porb)
+            t = t.flatten()
+            x = self.get_phase(t)
+        
+        if self.planet.orbit.e != 0:
+            x *= self.planet.orbit.Porb
+        
+        order = np.argsort(x)
+        x = x[order]
+        t = t[order]
         
         if T is None:
             T = self.planet.map.values.reshape(1,-1)
-        elif type(T)!=np.ndarray:
+        elif type(T)!=np.ndarray or len(T.shape)==1:
             T = np.array([T]).reshape(1,-1)
-        elif len(T.shape)==1:
-            T = T.reshape(1,-1)
         
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav,
                              allowReflect=allowReflect, allowThermal=allowThermal)
         tc = self.invert_lc(lc, bolo=bolo, tStarBright=tStarBright, wav=wav)
         
-        t = t.flatten()
-        x = x.flatten()
-        
-        t = np.append(t[x>=0], t[x<0])
-        tc = np.append(tc[x>=0], tc[x<0])
-        x = np.append(x[x>=0], x[x<0]+1)
-        if self.planet.orbit.e != 0:
-            x *= self.planet.orbit.Porb
-        
         plt.plot(x, tc)
-        plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
+        
+        if self.planet.orbit.e == 0:
+            plt.gca().axvline(self.get_phase_eclipse(), c='k', ls='--', label=r'$\rm Eclipse$')
         if self.planet.orbit.e != 0:
+            plt.gca().axvline(self.planet.orbit.t_ecl, c='k', ls='--', label=r'$\rm Eclipse$')
             plt.gca().axvline(self.planet.orbit.t_peri,
                               c='red', ls='-.', lw=2, label=r'$\rm Periastron$')
 
@@ -440,6 +468,9 @@ class System(object):
             plt.xlabel(r'$\rm Orbital~Phase$')
         else:
             plt.xlabel(r'$\rm Time~from~Transit~(days)$')
-        plt.xlim(np.min(x), np.max(x))
+        if self.planet.orbit.e != 0:
+            plt.xlim(0, self.planet.Porb)
+        else:
+            plt.xlim(0, 1)
         plt.ylim(0)
         return plt.gcf()
