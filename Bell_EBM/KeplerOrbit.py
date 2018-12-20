@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-12
+# Last Update: 2018-12-18
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,11 +14,11 @@ class KeplerOrbit(object):
         inc (float): The orbial inclination (in degrees above face-on)
         t0 (float): The linear ephemeris in days.
         e (float): The orbital eccentricity.
+        Prot (float): Body 2's rotational period in days.
         Omega (float): The longitude of ascending node (in degrees CCW from line-of-sight).
         argp (float): The argument of periastron (in degrees CCW from Omega).
         obliq (float, optional): The obliquity (axial tilt) of body 2 (in degrees toward body 1).
         argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
-        wWind (float, optional): Body 2's wind angular velocity in revolutions/s.
         t_peri (float): Time of body 2's closest approach to body 1.
         t_ecl (float): Time of body 2's eclipse by body 1.
         mean_motion (float): The mean motion in radians.
@@ -87,12 +87,6 @@ class KeplerOrbit(object):
         return self._Porb
     
     @property
-    def Prot(self):
-        """float: Body 2's rotational period in days."""
-        
-        return self._Prot
-    
-    @property
     def t_trans(self):
         """float: Time of body 1's eclipse by body 2.
         
@@ -108,7 +102,7 @@ class KeplerOrbit(object):
     
     
     def __init__(self, a=const.au.value, Porb=None, inc=90., t0=0., e=0., Omega=270., argp=90., # orbital parameters
-                 obliq=0., argobliq=0., Prot=None, wWind=0., # spin parameters
+                 obliq=0., argobliq=0., Prot=None, # spin parameters
                  m1=const.M_sun.value, m2=0.): # mass parameters
         """Initialization function.
         
@@ -124,7 +118,6 @@ class KeplerOrbit(object):
             m2 (float, optional): The mass of body 2 in kg.
             obliq (float, optional): The obliquity (axial tilt) of body 2 (in degrees toward body 1).
             argobliq (float, optional): The reference orbital angle used for obliq (in degrees from inferior conjunction).
-            wWind (float, optional): The body 2's wind angular velocity in revolutions/s.
         
         """
         
@@ -155,26 +148,14 @@ class KeplerOrbit(object):
         
         #Rotation Rate Attributes
         if Prot is not None:
-            self.Prot_input = Prot*self.ProtSign               # days
+            self.Prot_input = Prot
+            self.Prot = Prot*self.ProtSign               # days
         elif self.Porb is not None:
-            self.Prot_input = self.Porb*self.ProtSign
+            self.Prot_input = None
+            self.Prot = self.Porb*self.ProtSign
         else:
             self.Prot_input = None
-        
-        if wWind is None:
-            self.wWind = 0.
-        else:
-            self.wWind = wWind                 # revolutions/s
-            
-        if self.Prot_input is not None:
-            self.wRot = 1./(self.Prot_input*24.*3600.) # m/s
-        elif self.Porb is not None:
-            self.wRot = 1./(self.Porb*24.*3600.) # m/s
-        else:
-            self.wRot = None
-        
-        if self.wRot is not None:
-            self._Prot = 1./((self.wWind+self.wRot)*(24.*3600.)) # days
+            self.Prot = None
         
         if self.Porb is not None:
             self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180.)/(2.*np.pi)*self.Porb
@@ -209,11 +190,7 @@ class KeplerOrbit(object):
             
         # Update self.Prot
         if self.Prot_input is None:
-            self.wRot = 1./(self.Porb*self.ProtSign*24.*3600.) # m/s
-        else:
-            self.wRot = 1./(self.Prot_input*24.*3600.) # m/s
-        
-        self.Prot = 1/((self.wWind+self.wRot)*(24.*3600.)) # days
+            self.Prot = self.Porb
     
         self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180.)/(2.*np.pi)*self.Porb
         if self.t_peri < 0:
@@ -224,24 +201,9 @@ class KeplerOrbit(object):
         if self.t_ecl < 0:
             self.t_ecl = self.Porb + self.t_ecl
             
-        self.mean_motion = 2*np.pi/self._Porb
+        self.mean_motion = 2*np.pi/self.Porb
     
         return
-    
-    @Prot.setter
-    def Prot(self, Prot):
-        self.Prot_input = Prot
-        
-        # Update self.Prot
-        if self.Prot_input is None:
-            self.wRot = 1/(self.Porb*self.ProtSign*24.*3600.) # m/s
-        else:
-            self.wRot = 1/(self.Prot_input*24.*3600.) # m/s
-        
-        self._Prot = 1/((self.wWind+self.wRot)*(24.*3600.)) # days
-    
-        return
-    
     
     def solve_period(self):
         """Find the Keplerian orbital period.
@@ -531,12 +493,25 @@ class KeplerOrbit(object):
         
         """
         
-        if TA is None:
-            TA = self.true_anomaly(t)
+        if self.e == 0. and self.Prot == self.Porb:
+            if type(t) != np.ndarray:
+                sspLon = np.zeros_like([t])
+            else:
+                sspLon = np.zeros_like(t)
+        else:
+            if TA is None:
+                TA = self.true_anomaly(t)
+
+            sspLon = TA*180./np.pi - (t-self.t0)/self.Prot*360. + self.Omega+self.argp
+            sspLon = sspLon%180+(-180.)*(np.rint(np.floor(sspLon%360/180.) > 0))
         
-        sspLon = TA*180./np.pi - (t-self.t0)/self.Prot*360. + self.Omega+self.argp
-        sspLon = sspLon%180+(-180.)*(np.rint(np.floor(sspLon%360/180.) > 0))
-        sspLat = self.obliq*np.cos(self.get_phase(t, TA)*2*np.pi-self.argobliq*np.pi/180.)
+        if self.obliq == 0.:
+            if type(t) != np.ndarray:
+                sspLat = np.zeros_like([t])
+            else:
+                sspLat = np.zeros_like(t)
+        else:
+            sspLat = self.obliq*np.cos(self.get_phase(t, TA)*2*np.pi-self.argobliq*np.pi/180.)
         
         return sspLon, sspLat
 

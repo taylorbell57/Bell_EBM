@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-30
+# Last Update: 2018-12-18
 # Based on the work presented in:
 # Bell, T. J., & Cowan, N. B. (2018). Increased Heat Transport in Ultra-hot Jupiter Atmospheres through H2 Dissociation and Recombination. The Astrophysical Journal Letters, 857(2), L20.
 
@@ -199,21 +199,21 @@ def cp_H2(T):
         T = T.copy()
     
     #Below ~71 K, cp_H2 equation gives negative values
-#     T[T<=71] = 71.
     T[T<=100] = 100
     
-    A = np.array([33.066178, 18.563083, 43.413560])[np.newaxis,:] # From NIST
-    B = np.array([-11.363417, 12.257357, -4.293079])[np.newaxis,:] # From NIST
-    C = np.array([11.432816, -2.859786, 1.272428])[np.newaxis,:] # From NIST
-    D = np.array([-2.772874, 0.268238, -0.096876])[np.newaxis,:] # From NIST
-    E = np.array([-0.158558, 1.977990, -20.533862])[np.newaxis,:] # From NIST
-    temp = T.reshape(-1,1)/1000. #to get the right units to match Chase cp equation
-    cp_H2_options = (A + B*temp + C*temp**2 + D*temp**3 + E/temp**2)
-    cp_H2 = cp_H2_options[:,0]
-    cond2 = np.logical_and(1000 < T, T < 2500)
-    cp_H2[cond2] = cp_H2_options[cond2,1]
-    cond3 = 2500. <= T
-    cp_H2[cond3] = cp_H2_options[cond3,2]
+    A = np.array([33.066178, 18.563083, 43.413560]) # From NIST
+    B = np.array([-11.363417, 12.257357, -4.293079]) # From NIST
+    C = np.array([11.432816, -2.859786, 1.272428]) # From NIST
+    D = np.array([-2.772874, 0.268238, -0.096876]) # From NIST
+    E = np.array([-0.158558, 1.977990, -20.533862]) # From NIST
+    
+    temp = T/1000. #to get the right units to match Chase cp equation
+    
+    indices = np.zeros_like(T, dtype=int)
+    indices[np.logical_and(1000 < T, T < 2500)] = 1
+    indices[2500. <= T] = 2
+    
+    cp_H2 = (A[indices] + B[indices]*temp + C[indices]*temp**2 + D[indices]*temp**3 + E[indices]/temp**2)
     cp_H2 = cp_H2/const.N_A.value/(2*const.u.value)
     
     return cp_H2
@@ -237,25 +237,25 @@ def delta_cp_H2(T):
     else:
         T = T.copy()
     
-    #Below 71 K, cp_H2 equation gives negative values
-#     T[T<=71] = 71.
+    #Below ~71 K, cp_H2 equation gives negative values
     T[T<=100] = 100
 
-    B = np.array([-11.363417, 12.257357, -4.293079])[np.newaxis,:] # From NIST
-    C = np.array([11.432816, -2.859786, 1.272428])[np.newaxis,:] # From NIST
-    D = np.array([-2.772874, 0.268238, -0.096876])[np.newaxis,:] # From NIST
-    E = np.array([-0.158558, 1.977990, -20.533862])[np.newaxis,:] # From NIST
-    temp = T.reshape(-1,1)/1000. #to get the right units to match Chase cp equation
-    dcp_H2_options = (B + C*(2*temp) + D*(3*temp**2) + E*(-2/temp**3))/(1000.) #d(cp)/dT = d(cp)/d(temp)*d(temp)/d(T)
-    dcp_H2 = dcp_H2_options[:,0]
-    cond2 = np.logical_and(1000. < T, T < 2500.)
-    dcp_H2[cond2] = dcp_H2_options[cond2,1]
-    cond3 = 2500. <= T
-    dcp_H2[cond3] = dcp_H2_options[cond3,2]
+    B = np.array([-11.363417, 12.257357, -4.293079]) # From NIST
+    C = np.array([11.432816, -2.859786, 1.272428]) # From NIST
+    D = np.array([-2.772874, 0.268238, -0.096876]) # From NIST
+    E = np.array([-0.158558, 1.977990, -20.533862]) # From NIST
+    
+    temp = T/1000. #to get the right units to match Chase cp equation
+    
+    indices = np.zeros_like(T, dtype=int)
+    indices[np.logical_and(1000 < T, T < 2500)] = 1
+    indices[2500. <= T] = 2
+    
+    #d(cp)/dT = d(cp)/d(temp)*d(temp)/d(T)
+    dcp_H2 = (B[indices] + C[indices]*(2*temp) + D[indices]*(3*temp**2) + E[indices]*(-2/temp**3))/(1000.) 
     dcp_H2 = dcp_H2/const.N_A.value/(2*const.u.value)
     
-    #Below 70 K, cp_H2 equation gives negative values
-#     dcp_H2[T <= 71] = 0.
+    #Below ~71 K, cp_H2 equation gives negative values
     dcp_H2[T<=100] = 0.
 
     return dcp_H2

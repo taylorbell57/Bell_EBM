@@ -199,14 +199,11 @@ class System(object):
             t = self.planet.orbit.t0+np.linspace(0., self.planet.orbit.Prot, 1000)
             x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
         
-        if type(t)!=np.ndarray or len(t.shape)==1:
-            t = np.array([t]).reshape(-1,1)
+        if type(t)!=np.ndarray or len(t.shape)<3:
+            t = np.array([t]).reshape(-1,1,1)
         
         if T is None:
-            T = self.planet.map.values
-        
-        if len(T.shape)==1:
-            T = T.reshape(1,-1)
+            T = self.planet.map.values[np.newaxis,:]
         
         if allowThermal:
             fp = self.planet.Fp_vis(t, T, bolo, wav)
@@ -217,7 +214,7 @@ class System(object):
             fRefl = self.Fin(t, None, bolo, tStarBright, wav)
             fRefl *= self.planet.albedo/self.planet.absorptivity # Get only the reflected portion
             fRefl = fRefl*self.planet.weight(t, refPos='SOP')*self.planet.map.pixArea*self.planet.rad**2
-            fRefl = np.sum(fRefl, axis=1)
+            fRefl = np.sum(fRefl, axis=(1,2))
             fp += fRefl
         
         return fp/self.star.Fstar(bolo, tStarBright, wav)
@@ -253,7 +250,7 @@ class System(object):
         This function neglects for the timescale of dissociation/recombination for bell2018 planets.
         
         Args:
-            t (ndarray): The time in days.
+            t (float): The time in days.
             T (ndarray): The temperature map with shape (self.planet.map.npix).
             dt (float): The time step in days.
             TA (ndarray, optional): The true anomaly in radians (much faster to compute if provided).
@@ -265,8 +262,6 @@ class System(object):
         
         dt *= 24.*3600.
         
-        dEs = (self.Fin(t, TA)-self.planet.Fout(T))*dt
-        
         if not callable(self.planet.cp):
             C = self.planet.C
         else:
@@ -275,7 +270,17 @@ class System(object):
             else:
                 C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams))
         
-        return dEs/C
+        dT_flux = (self.Fin(t, TA)[0]-self.planet.Fout(T))*dt/C
+        
+        # advect gas
+        if self.planet.wind_dlon != 0:
+            fMoved = self.planet.wind_dlon*dt
+            T_upWind = T[self.planet.upwindLatIndex,self.planet.upwindLonIndex]
+            dT_adv = (T_upWind-T)*fMoved
+        else:
+            dT_adv = 0
+        
+        return dT_flux + dT_adv
     
     def _find_dT(self, dT, dE, T0, chi0, plug, cp):
         """The error function to minimize to find the energy partitioning between dT and dDiss.
@@ -292,7 +297,7 @@ class System(object):
         This function accounts for the timescale of dissociation/recombination for bell2018 planets.
         
         Args:
-            t (ndarray): The time in days.
+            t (float): The time in days.
             T (ndarray): The temperature map with shape (self.planet.map.npix).
             dt (float): The timestep in days.
             TA (ndarray, optional): The true anomaly in radians (much faster to compute if provided).
@@ -307,16 +312,16 @@ class System(object):
         plug = self.planet.mlDepth*self.planet.mlDensity
         cp = h2.lte_cp(T, *self.planet.cpParams)
         
-        dEs = (self.Fin(t, TA)-self.planet.Fout(T)).flatten()*dt
+        dEs = (self.Fin(t, TA)[0]-self.planet.Fout(T))*dt
         
-        C_EQ = self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams)
+        C_EQ = self.planet.mlDepth*self.planet.mlDensity*cp
         
-        dTs = []
-        for i in range(dEs.size):
-            dTs.append(spopt.minimize(self._find_dT, x0=dEs[i]/C_EQ[i],
-                                      args=(dEs[i], T[i], self.planet.map.dissValues[i], plug, cp[i]),
-                                      tol=0.001*plug*cp[i]).x[0])
-        dTs = np.array(dTs)
+        dTs = np.zeros_like(T)
+        for i in range(dEs.shape[0]):
+            for j in range(dEs.shape[1]):
+                dTs[i,j] = spopt.minimize(self._find_dT, x0=dEs[i,j]/C_EQ[i,j],
+                                          args=(dEs[i,j], T[i,j], self.planet.map.dissValues[i,j], plug, cp[i,j]),
+                                          tol=0.001*plug*cp[i,j]).x[0]
         dDiss = h2.dissFracApprox(T+dTs, *self.planet.cpParams)-self.planet.map.dissValues
         
         maxDiss = dt*h2.tau_diss(self.planet.mlDepth,T)
@@ -329,9 +334,20 @@ class System(object):
         dDiss[bad] = maxRecomb[bad]
         dTs[bad] = dDiss[bad]*h2.dissE/cp[bad]-dEs[bad]/cp[bad]/plug
         
-        self.planet.map.dissValues += dDiss
+        # advect gas
+        if self.planet.wind_dlon != 0:
+            fMoved = self.planet.wind_dlon*dt
+            T_upWind = T[self.planet.upwindLatIndex,self.planet.upwindLonIndex]
+            chi_upWind = self.planet.map.dissValues[self.planet.upwindLatIndex,self.planet.upwindLonIndex]
+            dT_adv = (T_upWind-T)*fMoved
+            dChi_adv = (chi_upWind-self.planet.map.dissValues)*fMoved
+        else:
+            dT_adv = 0
+            dChi_adv = 0
+            
+        self.planet.map.dissValues += dDiss+dChi_adv
         
-        return dTs
+        return dTs + dT_adv
 
     def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False, progressBar=False, minTemp=0):
         """Evolve the planet's temperature map with time.
@@ -352,6 +368,13 @@ class System(object):
             
         """
         
+        if self.planet.wind_dlon*(dt*24*3600) > 0.5:
+            print('Error: Your time step must be sufficiently small so that gas travels less that 0.5 pixels.')
+            dtMax = 0.5/self.planet.wind_dlon/24/3600
+            dtMax = np.floor(dtMax*1e5)/1e5
+            print('Use a time step of '+str(dtMax)+' or less')
+            return (None, None)
+        
         if T0 is None:
             T0 = self.planet.map.values
         if t1 is None:
@@ -360,15 +383,15 @@ class System(object):
             dt = self.planet.orbit.Porb/100.
         
         times = (t0 + np.arange(int(np.rint((t1-t0)/dt)))*dt)[:,np.newaxis]
-        TAs = list(self.planet.orbit.true_anomaly(times)[:,:,np.newaxis])
+        TAs = self.planet.orbit.true_anomaly(times)[:,:,np.newaxis]
         
         if verbose:
             print('Starting Run')
-        maps = np.array([T0]).reshape(1,-1)
+        maps = T0[np.newaxis,:]
         
         # Soften the blow on the NEQ ODE
         if self.planet.plType == 'bell2018' and self.neq and np.all(self.planet.map.dissValues) == 0.:
-            self.planet.map.dissValues = h2.dissFracApprox(T0.flatten(), *self.planet.cpParams)
+            self.planet.map.dissValues = h2.dissFracApprox(T0, *self.planet.cpParams)
         
         if progressBar:
             from tqdm import tnrange
@@ -377,7 +400,7 @@ class System(object):
             iterator = range
         
         for i in iterator(1, len(times)):
-            newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i]).flatten()).reshape(1,-1)
+            newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i]))[np.newaxis,:]
             newMap[newMap<minTemp] = minTemp
             if intermediates:
                 maps = np.append(maps, newMap, axis=0)
@@ -423,21 +446,18 @@ class System(object):
             return None
         
         if t is None:
-            # Use Prot instead as map would rotate
-            tMax = self.planet.orbit.Porb-(self.planet.orbit.Prot_input-self.planet.orbit.Prot)
-            t = self.planet.map.time+np.linspace(0., tMax, 1000)
-            x = self.get_phase(t)*self.planet.orbit.Porb/tMax
+            t = self.planet.map.time+np.linspace(0., self.planet.orbit.Porb, 1000)
         else:
             t = t.flatten()
-            x = self.get_phase(t)
+        x = self.get_phase(t)
+        
+        t = t.reshape(-1,1,1)
         
         if self.planet.orbit.e != 0:
             x *= self.planet.orbit.Porb
         
         if T is None:
-            T = self.planet.map.values.reshape(1,-1)
-        elif type(T)!=np.ndarray or len(T.shape)==1:
-            T = np.array([T]).reshape(1,-1)
+            T = self.planet.map.values[np.newaxis,:]
         
         order = np.argsort(x)
         x = x[order]
@@ -496,21 +516,17 @@ class System(object):
             return None
         
         if t is None:
-            # Use Prot instead as map would rotate
-            tMax = self.planet.orbit.Porb-(self.planet.orbit.Prot_input-self.planet.orbit.Prot)
-            t = self.planet.map.time+np.linspace(0., tMax, 1000)
-            x = self.get_phase(t)*self.planet.orbit.Porb/tMax
+            t = self.planet.map.time+np.linspace(0., self.planet.orbit.Porb, 1000)
         else:
             t = t.flatten()
-            x = self.get_phase(t)
+        
+        x = self.get_phase(t)
         
         if self.planet.orbit.e != 0:
             x *= self.planet.orbit.Porb
         
         if T is None:
-            T = self.planet.map.values.reshape(1,-1)
-        elif type(T)!=np.ndarray or len(T.shape)==1:
-            T = np.array([T]).reshape(1,-1)
+            T = self.planet.map.values[np.newaxis,:]
         
         order = np.argsort(x)
         x = x[order]

@@ -25,7 +25,6 @@ class Planet(object):
         trasmissivity (float): The trasmissivity of the emitting layer (between 0 and 1).
         T_exponent (float): The exponent which determinges the rate at which the planet cools (4 for blackbody cooling,
             1 for Newtonian cooling) when calculating Fout with bolo=True.
-        useHealpix (bool): Whether the planet's map uses a healpix grid.
         
     """
     
@@ -115,7 +114,7 @@ class Planet(object):
     def __init__(self, plType='gas', rad=const.R_jup.value, mass=const.M_jup.value,
                  a=0.03*const.au.value, Porb=None, Prot=None, inc=90., t0=0., e=0., Omega=270., argp=90, obliq=0., argobliq=0.,
                  vWind=0., albedo=0., cp=None, cpParams=None, mlDepth=None, mlDensity=None, T_exponent=4.,
-                 emissivity=1., trasmissivity=0., nlat=16, nlon=None, useHealpix=False, nside=7):
+                 emissivity=1., trasmissivity=0., nlat=16, nlon=None):
         """Initialization function.
         
         Args:
@@ -147,9 +146,7 @@ class Planet(object):
             nlat (int, optional): The number of latitudinal cells to use for rectangular maps.
             nlon (int, optional): The number of longitudinal cells to use for rectangular maps.
                 If nlon==None, uses 2*nlat.
-            useHealpix (bool, optional): Whether the planet's map uses a healpix grid.
-            nside (int, optional): A parameter that sets the resolution of healpix maps.
-        
+            
         """
         
         #Planet Attributes
@@ -221,15 +218,19 @@ class Planet(object):
             return False
         
         #Map Attributes
-        self.map = Map(nlat=nlat, nlon=nlon, useHealpix=useHealpix, nside=nside)
+        self.map = Map(nlat=nlat, nlon=nlon)
         
         if vWind == None:
-            wWind = 0.
+            self.wind_dlon = 0.
         else:
-            wWind = vWind/(2.*np.pi*self.rad)
+            omegaWind = vWind/self.rad # radians/s
+            self.wind_dlon = omegaWind/(self.map.dlon*np.pi/180)
+            upwindIndex = np.roll(np.arange(self.map.nlon), int(np.sign(self.wind_dlon)))
+            self.upwindLonIndex = (np.ones(16).reshape(-1,1)*upwindIndex).astype(int)
+            self.upwindLatIndex = (np.arange(16).reshape(-1,1)*np.ones(32).reshape(1,-1)).astype(int)
         
         self.orbit = KeplerOrbit(a=a, Porb=Porb, inc=inc, t0=t0, e=e, Omega=Omega, argp=argp,
-                                 obliq=obliq, argobliq=argobliq, Prot=Prot, wWind=wWind,
+                                 obliq=obliq, argobliq=argobliq, Prot=Prot,
                                  m2=self.mass)
     
     
@@ -327,8 +328,6 @@ class Planet(object):
         
         if T is None:
             T = self.map.values
-        elif type(T)!=np.ndarray:
-            T = np.array([T])
         
         if bolo:
             return self.emissivity*const.sigma_sb.value*T**self.T_exponent
@@ -352,10 +351,10 @@ class Planet(object):
         
         """
         
-        if type(t)!=np.ndarray or t.shape==1:
-            t = np.array(t).reshape(-1,1)
-        if TA is not None and (type(TA)!=np.ndarray or TA.shape==1):
-            TA = np.array(TA).reshape(-1,1)
+        if type(t)!=np.ndarray or len(t.shape)<3:
+            t = np.array(t).reshape(-1,1,1)
+        if TA is not None and (type(TA)!=np.ndarray or len(TA.shape)<3):
+            TA = np.array(TA).reshape(-1,1,1)
         
         if refPos.lower() == 'ssp':
             refLon, refLat = self.orbit.get_ssp(t, TA)
@@ -365,8 +364,11 @@ class Planet(object):
             print('Reference point "'+str(refPos)+'" not understood!')
             return False
         
-        weight = (np.cos(self.map.latGrid*np.pi/180.)*np.cos(refLat*np.pi/180.)*np.cos((self.map.lonGrid-refLon)*np.pi/180.)+
-                  np.sin(self.map.latGrid*np.pi/180.)*np.sin(refLat*np.pi/180.))
+        weight = (np.cos(self.map.latGrid_radians[np.newaxis,:])
+                  *np.cos(refLat*np.pi/180.)
+                  *np.cos((self.map.lonGrid_radians[np.newaxis,:]-refLon*np.pi/180.))
+                  + np.sin(self.map.latGrid_radians[np.newaxis,:])
+                    *np.sin(refLat*np.pi/180.))
         
         weight = np.max(np.append(np.zeros_like(weight[np.newaxis,:]), weight[np.newaxis,:], axis=0), axis=0)
         
@@ -391,21 +393,21 @@ class Planet(object):
         """
         
         if T is None:
-            T = self.map.values
+            T = self.map.values[np.newaxis,:]
         
         weights = self.weight(t, refPos='SOP')
         flux = self.Fout(T, bolo, wav)*self.map.pixArea*self.rad**2
         # used to try to remove wiggles from finite number of pixels coming in and out of view
-        weightsNormed = weights*(4.*np.pi/self.map.npix)/np.pi
+        # weightsNormed = weights*(4.*np.pi/self.map.npix)/np.pi
         
-        return np.sum(flux*weights, axis=1)#/np.sum(weightsNormed, axis=1)
+        return np.sum(flux*weights, axis=(1,2))#/np.sum(weightsNormed, axis=1)
 
-    def plot_map(self, tempMap=None, time=None):
+    def plot_map(self, tempMap=None, refLon=None):
         """A convenience routine to plot the planet's temperature map.
         
         Args:
             tempMap (ndarray): The temperature map (if None, use self.map.values).
-            time (float, optional): The time corresponding to the map used to de-rotate the map.
+            refLon (float, optional): The centre longitude used to rotate the map.
         
         Returns:
             figure: The figure containing the plot.
@@ -413,30 +415,22 @@ class Planet(object):
         """
         
         oldValues = self.map.values
-        if tempMap is None:
-            if time is None:
-                subStellarLon = self.orbit.get_ssp(self.map.time)[0][0]
-            else:
-                subStellarLon = self.orbit.get_ssp(time)[0][0]
-        else:
-            self.map.set_values(tempMap, time)
-            if time is not None:
-                subStellarLon = self.orbit.get_ssp(time)[0][0]
-            else:
-                subStellarLon = None
+        if tempMap is not None:
+            self.map.set_values(tempMap)
         
-        fig = self.map.plot_map(subStellarLon)
-        self.map.set_values(oldValues, time)
+        fig = self.map.plot_map(refLon)
+        
+        self.map.set_values(oldValues)
         
         return fig
     
-    def plot_H2_dissociation(self, dissMap=None, time=None):
+    def plot_H2_dissociation(self, dissMap=None, refLon=None):
         """A convenience routine to plot the planet's H2 dissociation map.
         
         Args:
             dissMap (ndarray, optional): The H2 dissociation fraction values for the map (if None,
                 use self.map.dissValues).
-            time (float, optional): The time corresponding to the map used to de-rotate the map.
+            refLon (float, optional): The centre longitude used to rotate the map.
         
         Returns:
             figure: The figure containing the plot.
@@ -445,21 +439,11 @@ class Planet(object):
         
         oldValues = self.map.values
         oldDissValues = self.map.dissValues
-        oldTime = self.map.time
+        if dissMap is not None:
+            self.map.set_values(oldValues, dissValues=dissMap)
         
-        if dissMap is None:
-            if time is None:
-                subStellarLon = self.orbit.get_ssp(self.map.time)[0][0]
-            else:
-                subStellarLon = self.orbit.get_ssp(time)[0][0]
-        else:
-            self.map.set_values(oldValues, time, dissMap)
-            if time is not None:
-                subStellarLon = self.orbit.get_ssp(time)[0][0]
-            else:
-                subStellarLon = None
+        fig = self.map.plot_H2_dissociation(refLon)
         
-        fig = self.map.plot_H2_dissociation(subStellarLon)
-        self.map.set_values(oldValues, oldTime, oldDissValues)
+        self.map.set_values(oldValues, dissValues=oldDissValues)
         
         return fig
