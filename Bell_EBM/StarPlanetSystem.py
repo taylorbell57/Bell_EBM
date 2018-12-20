@@ -333,6 +333,7 @@ class System(object):
         
         return dTs
 
+    
     def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False, progressBar=False, minTemp=0):
         """Evolve the planet's temperature map with time.
         
@@ -395,7 +396,7 @@ class System(object):
             print('Done!')
         
         return times, maps
-        
+    
     def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
         """A convenience plotting routine to show the planet's phasecurve.
 
