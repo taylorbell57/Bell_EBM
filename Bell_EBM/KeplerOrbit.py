@@ -177,12 +177,11 @@ class KeplerOrbit(object):
             self._Prot = 1./((self.wWind+self.wRot)*(24.*3600.)) # days
         
         if self.Porb is not None:
-            self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180.)/(2.*np.pi)*self.Porb
+            self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-(self.argp+self.Omega-270.)*np.pi/180.)/(2.*np.pi)*self.Porb
             if self.t_peri < 0:
                 self.t_peri = self.Porb + self.t_peri
 
-            self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180.)
-                                     - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180.))/(2.*np.pi)*self.Porb)
+            self.t_ecl = self.ta_to_ma(np.pi+self.true_anomaly(self.t0))/self.mean_motion + self.t_peri
             if self.t_ecl < 0:
                 self.t_ecl = self.Porb + self.t_ecl
             
