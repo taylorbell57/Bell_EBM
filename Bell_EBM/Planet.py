@@ -19,6 +19,7 @@ class Planet(object):
         C (float, optional): The planet's heat capacity in J/m^2/K.
         emissivity (float): The emissivity of the emitting layer (between 0 and 1).
         g (float): The planet's surface gravity in m/s^2.
+        internalFlux (float): The planet's internal heating flux.
         map (Bell_EBM.Map): The planet's temperature map.
         orbit (Bell_EBM.KeplerOrbit): The planet's orbit.
         plType (str): The planet's composition.
@@ -115,7 +116,7 @@ class Planet(object):
     def __init__(self, plType='gas', rad=const.R_jup.value, mass=const.M_jup.value,
                  a=0.03*const.au.value, Porb=None, Prot=None, inc=90., t0=0., e=0., Omega=270., argp=90, obliq=0., argobliq=0.,
                  vWind=0., albedo=0., cp=None, cpParams=None, mlDepth=None, mlDensity=None, T_exponent=4.,
-                 emissivity=1., trasmissivity=0., nlat=16, nlon=None, useHealpix=False, nside=7):
+                 emissivity=1., trasmissivity=0., internalFlux=0., nlat=16, nlon=None, useHealpix=False, nside=7):
         """Initialization function.
         
         Args:
@@ -144,6 +145,7 @@ class Planet(object):
                 1 for Newtonian cooling).
             emissivity (float, optional): The emissivity of the emitting layer (between 0 and 1).
             trasmissivity (float, optional): The trasmissivity of the emitting layer (between 0 and 1).
+            internalFlux (float, optional): The planet's internal heating flux.
             nlat (int, optional): The number of latitudinal cells to use for rectangular maps.
             nlon (int, optional): The number of longitudinal cells to use for rectangular maps.
                 If nlon==None, uses 2*nlat.
@@ -178,6 +180,8 @@ class Planet(object):
             self.trasmissivity = 0.
         else:
             self.trasmissivity = trasmissivity
+            
+        self.internalFlux = internalFlux
         
         # Planet's Thermal Attributes
         if self.plType=='water':

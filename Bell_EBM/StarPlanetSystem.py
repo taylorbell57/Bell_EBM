@@ -265,7 +265,7 @@ class System(object):
         
         dt *= 24.*3600.
         
-        dEs = (self.Fin(t, TA)-self.planet.Fout(T))*dt
+        dEs = (self.Fin(t, TA)-self.planet.Fout(T)+self.planet.internalFlux)*dt
         
         if not callable(self.planet.cp):
             C = self.planet.C
@@ -334,7 +334,8 @@ class System(object):
         return dTs
 
     
-    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False, progressBar=False, minTemp=0):
+    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True,
+                  intermediates=False, progressBar=False, minTemp=0):
         """Evolve the planet's temperature map with time.
         
         Args:
