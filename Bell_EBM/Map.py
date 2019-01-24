@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-17
+# Last Update: 2019-01-24
 
 import numpy as np
 import matplotlib
@@ -255,16 +255,25 @@ class Map(object):
                 self.dissValues = dissValues
     
     
-    def plot_map(self, refLon=None):
+    def plot_map(self, refLon=None, fig=None, ax=None):
         """A convenience routine to plot the temperature map
         
         Args:
             refLon (float, optional): The sub-stellar longitude used to de-rotate the map.
+            fig (figure, optional): The figure on which the plotting should be done
+                (defaults to plt.gcf()).
+            ax (axis, optional): The axis on which the plotting should be done
+                (defaults to plt.gca()).
         
         Returns:
             figure: The figure containing the plot.
         
         """
+        
+        if ax is None:
+            ax = plt.gca()
+        if fig is None:
+            fig = plt.gcf()
         
         if not self.useHealpix:
             tempMap = self.values.reshape((self.lat.size, self.lon.size), order='F')
@@ -272,12 +281,12 @@ class Map(object):
                 rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][-1]-int(self.lon.size/2.))
                 tempMap = np.roll(tempMap, rollCount, axis=1)
 
-            im = plt.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90), origin='lower')
-            plt.xlabel(r'$\rm Longitude$')
-            plt.ylabel(r'$\rm Latitude$')
-            plt.xticks([-180,-90,0,90,180])
-            plt.yticks([-90,-45,0,45,90])
-            cbar = plt.colorbar(orientation='vertical', fraction=0.05, pad = 0.05, aspect=9)
+            im = ax.imshow(tempMap, cmap='inferno', extent=(-180,180,-90,90), origin='lower')
+            ax.set_xlabel(r'$\rm Longitude$')
+            ax.set_ylabel(r'$\rm Latitude$')
+            ax.set_xticks([-180,-90,0,90,180])
+            ax.set_yticks([-90,-45,0,45,90])
+            cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.05, pad = 0.05, aspect=9)
         else:
             current_cmap = matplotlib.cm.get_cmap('inferno')
             current_cmap.set_bad(color='white')
@@ -285,26 +294,35 @@ class Map(object):
                 refLon = 0.
             im = hp.orthview(self.values, flip='geo', cmap='inferno', min=0,
                              rot=(refLon, 0, 0), return_projected_map=True, cbar=None)
-            plt.clf()
-            plt.imshow(im, cmap='inferno')
-            plt.xticks([])
-            plt.yticks([])
-            plt.setp(plt.gca().spines.values(), color='none')
-            cbar = plt.colorbar(orientation='horizontal',fraction=0.075, pad = 0.05)
+            plt.close(plt.gcf())
+            im = ax.imshow(im, cmap='inferno')
+            ax.set_xticks([])
+            ax.set_yticks([])
+            plt.setp(ax.spines.values(), color='none')
+            cbar = fig.colorbar(im, ax=ax, orientation='horizontal',fraction=0.075, pad = 0.05)
         
         cbar.set_label(r'$\rm Temperature~(K)$')
-        return plt.gcf()
+        return fig
     
-    def plot_H2_dissociation(self, refLon=None):
+    def plot_H2_dissociation(self, refLon=None, fig=None, ax=None):
         """A convenience routine to plot the H2 dissociation map.
         
         Args:
             refLon (float, optional): The sub-stellar longitude used to de-rotate the map.
+            fig (figure, optional): The figure on which the plotting should be done
+                (defaults to plt.gcf()).
+            ax (axis, optional): The axis on which the plotting should be done
+                (defaults to plt.gca()).
         
         Returns:
             figure: The figure containing the plot.
         
         """
+        
+        if ax is None:
+            ax = plt.gca()
+        if fig is None:
+            fig = plt.gcf()
         
         if not self.useHealpix:
             dissMap = self.dissValues.reshape((self.lat.size, self.lon.size), order='F')*100.
@@ -312,12 +330,12 @@ class Map(object):
                 rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][-1]-int(self.lon.size/2.))
                 dissMap = np.roll(dissMap, rollCount, axis=1)
 
-            plt.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0, origin='lower')
-            plt.xlabel(r'$\rm Longitude$')
-            plt.ylabel(r'$\rm Latitude$')
-            plt.xticks([-180,-90,0,90,180])
-            plt.yticks([-90,-45,0,45,90])
-            cbar = plt.colorbar(orientation='vertical', fraction=0.05, pad = 0.05, aspect=9)
+            ax.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0, origin='lower')
+            ax.set_xlabel(r'$\rm Longitude$')
+            ax.set_ylabel(r'$\rm Latitude$')
+            ax.set_xticks([-180,-90,0,90,180])
+            ax.set_yticks([-90,-45,0,45,90])
+            cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.05, pad = 0.05, aspect=9)
         else:
             current_cmap = matplotlib.cm.get_cmap('inferno')
             current_cmap.set_bad(color='white')
@@ -325,12 +343,12 @@ class Map(object):
                 refLon = 0
             im = hp.orthview(self.dissValues*100., flip='geo', cmap='inferno', min=0,
                              rot=(refLon, 0, 0), return_projected_map=True, cbar=None)
-            plt.clf()
-            plt.imshow(im, cmap='inferno', vmin=0)
-            plt.xticks([])
-            plt.yticks([])
-            plt.setp(plt.gca().spines.values(), color='none')
-            cbar = plt.colorbar(orientation='horizontal', fraction=0.075, pad = 0.05)
-        
+            plt.close(plt.gcf())
+            im = ax.imshow(im, cmap='inferno', vmin=0)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            plt.setp(ax.spines.values(), color='none')
+            cbar = fig.colorbar(im, ax=ax, orientation='horizontal',fraction=0.075, pad = 0.05)
+            
         cbar.set_label(r'$\rm Dissociation~Fraction~(\%)$')
-        return plt.gcf()
+        return fig

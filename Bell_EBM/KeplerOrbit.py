@@ -609,3 +609,63 @@ class KeplerOrbit(object):
         plt.gca().set_aspect('equal')
         
         return plt.gcf()
+
+    def plot_orbit2(self):
+        """A convenience routine to visualize the orbit
+        
+        Args:
+            fig (figure, optional): The figure on which the plotting should be done
+                (defaults to plt.gcf()).
+            ax (axis, optional): The axis on which the plotting should be done
+                (defaults to plt.gca()).
+        
+        Returns:
+            figure: The figure containing the plot.
+        
+        """
+        
+        t = np.linspace(0.,self.Porb,100, endpoint=False)
+
+        x, y, z = np.array(self.xyz(t))/const.au.value
+
+        xTrans, yTrans, zTrans = np.array(self.xyz(self.t0))/const.au.value
+        xEcl, yEcl, zEcl = np.array(self.xyz(self.t_ecl))/const.au.value
+        xPeri, yPeri, zPeri = np.array(self.xyz(self.t_peri))/const.au.value
+
+        fig, axes = plt.subplots(3, 1, sharex=False, figsize=(10, 14))
+        
+        axes[0].plot(y, x, '.', c='k', ms=2)
+        axes[0].plot(0,0, '*', c='r', ms=15)
+        axes[0].plot(yTrans, xTrans, 'o', c='b', ms=10, label=r'$\rm Transit$')
+        axes[0].plot(yEcl, xEcl, 'o', c='k', ms=7, label=r'$\rm Eclipse$')
+        if self.e != 0:
+            axes[0].plot(yPeri, xPeri, 'o', c='r', ms=5, label=r'$\rm Periastron$')
+        axes[0].set_xlabel('$y$')
+        axes[0].set_ylabel('$x$')
+        axes[0].invert_yaxis()
+        axes[0].set_aspect('equal')
+        axes[0].legend(loc=6, bbox_to_anchor=(1,0.5))
+
+        axes[1].plot(y, z, '.', c='k', ms=2)
+        axes[1].plot(0,0, '*', c='r', ms=15)
+        axes[1].plot(yTrans, zTrans, 'o', c='b', ms=10)
+        axes[1].plot(yEcl, zEcl, 'o', c='k', ms=7)
+        if self.e != 0:
+            axes[1].plot(yPeri, zPeri, 'o', c='r', ms=5)
+        axes[1].set_aspect('equal')
+        axes[1].set_xlabel('$y$')
+        axes[1].set_ylabel('$z$')
+
+        axes[2].plot(x, z, '.', c='k', ms=2)
+        axes[2].plot(0,0, '*', c='r', ms=15)
+        axes[2].plot(xTrans, zTrans, 'o', c='b', ms=10)
+        axes[2].plot(xEcl, zEcl, 'o', c='k', ms=7)
+        if self.e != 0:
+            axes[2].plot(xPeri, zPeri, 'o', c='r', ms=5)
+        axes[2].set_xlabel('$x$')
+        axes[2].set_ylabel('$z$')
+        axes[2].set_aspect('equal')
+        
+        fig.subplots_adjust(hspace=0.35)
+        
+        return fig

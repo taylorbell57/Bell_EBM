@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-18
+# Last Update: 2019-01-24
 
 import numpy as np
 import matplotlib
@@ -19,6 +19,7 @@ class Planet(object):
         C (float, optional): The planet's heat capacity in J/m^2/K.
         emissivity (float): The emissivity of the emitting layer (between 0 and 1).
         g (float): The planet's surface gravity in m/s^2.
+        instRedistFrac (float): The fraction of flux that is instantly redistributed across the entire planet.
         internalFlux (float): The planet's internal heating flux.
         map (Bell_EBM.Map): The planet's temperature map.
         orbit (Bell_EBM.KeplerOrbit): The planet's orbit.
@@ -116,7 +117,8 @@ class Planet(object):
     def __init__(self, plType='gas', rad=const.R_jup.value, mass=const.M_jup.value,
                  a=0.03*const.au.value, Porb=None, Prot=None, inc=90., t0=0., e=0., Omega=270., argp=90, obliq=0., argobliq=0.,
                  vWind=0., albedo=0., cp=None, cpParams=None, mlDepth=None, mlDensity=None, T_exponent=4.,
-                 emissivity=1., trasmissivity=0., internalFlux=0., nlat=16, nlon=None, useHealpix=False, nside=7):
+                 emissivity=1., trasmissivity=0., internalFlux=0., instRedistFrac=0.,
+                 nlat=16, nlon=None, useHealpix=False, nside=7):
         """Initialization function.
         
         Args:
@@ -146,6 +148,7 @@ class Planet(object):
             emissivity (float, optional): The emissivity of the emitting layer (between 0 and 1).
             trasmissivity (float, optional): The trasmissivity of the emitting layer (between 0 and 1).
             internalFlux (float, optional): The planet's internal heating flux.
+            instRedistFrac (float): The fraction of flux that is instantly redistributed across the entire planet.
             nlat (int, optional): The number of latitudinal cells to use for rectangular maps.
             nlon (int, optional): The number of longitudinal cells to use for rectangular maps.
                 If nlon==None, uses 2*nlat.
@@ -182,6 +185,7 @@ class Planet(object):
             self.trasmissivity = trasmissivity
             
         self.internalFlux = internalFlux
+        self.instRedistFrac = instRedistFrac
         
         # Planet's Thermal Attributes
         if self.plType=='water':
@@ -404,12 +408,16 @@ class Planet(object):
         
         return np.sum(flux*weights, axis=1)#/np.sum(weightsNormed, axis=1)
 
-    def plot_map(self, tempMap=None, time=None):
+    def plot_map(self, tempMap=None, time=None, fig=None, ax=None):
         """A convenience routine to plot the planet's temperature map.
         
         Args:
             tempMap (ndarray): The temperature map (if None, use self.map.values).
             time (float, optional): The time corresponding to the map used to de-rotate the map.
+            fig (figure, optional): The figure on which the plotting should be done
+                (defaults to plt.gcf()).
+            ax (axis, optional): The axis on which the plotting should be done
+                (defaults to plt.gca()).
         
         Returns:
             figure: The figure containing the plot.
@@ -429,18 +437,22 @@ class Planet(object):
             else:
                 subStellarLon = None
         
-        fig = self.map.plot_map(subStellarLon)
+        fig = self.map.plot_map(subStellarLon, fig=fig, ax=ax)
         self.map.set_values(oldValues, time)
         
         return fig
     
-    def plot_H2_dissociation(self, dissMap=None, time=None):
+    def plot_H2_dissociation(self, dissMap=None, time=None, fig=None, ax=None):
         """A convenience routine to plot the planet's H2 dissociation map.
         
         Args:
             dissMap (ndarray, optional): The H2 dissociation fraction values for the map (if None,
                 use self.map.dissValues).
             time (float, optional): The time corresponding to the map used to de-rotate the map.
+            fig (figure, optional): The figure on which the plotting should be done
+                (defaults to plt.gcf()).
+            ax (axis, optional): The axis on which the plotting should be done
+                (defaults to plt.gca()).
         
         Returns:
             figure: The figure containing the plot.
@@ -463,7 +475,7 @@ class Planet(object):
             else:
                 subStellarLon = None
         
-        fig = self.map.plot_H2_dissociation(subStellarLon)
+        fig = self.map.plot_H2_dissociation(subStellarLon, fig=fig, ax=ax)
         self.map.set_values(oldValues, oldTime, oldDissValues)
         
         return fig

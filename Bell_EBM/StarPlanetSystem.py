@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-18
+# Last Update: 2019-01-24
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -265,7 +265,10 @@ class System(object):
         
         dt *= 24.*3600.
         
-        dEs = (self.Fin(t, TA)-self.planet.Fout(T)+self.planet.internalFlux)*dt
+        dEs = ((1-self.planet.instRedistFrac)*self.Fin(t, TA)
+               -self.planet.Fout(T)
+               +self.planet.internalFlux
+               +self.planet.instRedistFrac*np.sum(self.Fin(t, TA))/self.planet.map.npix)*dt
         
         if not callable(self.planet.cp):
             C = self.planet.C
@@ -307,7 +310,10 @@ class System(object):
         plug = self.planet.mlDepth*self.planet.mlDensity
         cp = h2.lte_cp(T, *self.planet.cpParams)
         
-        dEs = (self.Fin(t, TA)-self.planet.Fout(T)).flatten()*dt
+        dEs = ((1-self.planet.instRedistFrac)*self.Fin(t, TA)
+               -self.planet.Fout(T)
+               +self.planet.internalFlux
+               +self.planet.instRedistFrac*np.sum(self.Fin(t, TA))/self.planet.map.npix).flatten()*dt
         
         C_EQ = self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams)
         
