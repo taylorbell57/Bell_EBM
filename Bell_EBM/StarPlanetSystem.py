@@ -174,7 +174,7 @@ class System(object):
         
         return self.Firr(t, TA, bolo, tStarBright, wav)*self.planet.weight(t, TA)
 
-    def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
+    def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=False, allowThermal=True):
         """Calculate the planet's lightcurve (ignoring any occultations).
         
         Args:
@@ -186,8 +186,8 @@ class System(object):
                 (True, default) or wavelength dependent (False).
             tStarBright (ndarray): The stellar brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
-            allowReflect (bool, optional): Account for the contribution from reflected light.
-            allowThermal (bool, optional): Account for the contribution from thermal emission.
+            allowReflect (bool, optional): Account for the contribution from reflected light (default=False).
+            allowThermal (bool, optional): Account for the contribution from thermal emission (default=True).
         
         Returns:
             ndarray: The observed planetary flux normalized by the stellar flux.
@@ -417,8 +417,8 @@ class System(object):
                 or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
-            allowReflect (bool, optional): Account for the contribution from reflected light.
-            allowThermal (bool, optional): Account for the contribution from thermal emission.
+            allowReflect (bool, optional): Account for the contribution from reflected light (default=False).
+            allowThermal (bool, optional): Account for the contribution from thermal emission (default=True).
 
         Returns:
             figure: The figure containing the plot.
@@ -490,8 +490,10 @@ class System(object):
                 or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
-            allowReflect (bool, optional): Account for the contribution from reflected light.
-            allowThermal (bool, optional): Account for the contribution from thermal emission.
+            allowReflect (bool, optional): Account for the contribution from reflected light (default=False).
+                This allows you to calculate the contamination of the temperature curve that you would get if
+                you neglected to subtract the reflected light component.
+            allowThermal (bool, optional): Account for the contribution from thermal emission (default=True).
         
         Returns:
             figure: The figure containing the plot.
