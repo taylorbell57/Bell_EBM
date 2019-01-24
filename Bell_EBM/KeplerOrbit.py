@@ -569,11 +569,13 @@ class KeplerOrbit(object):
 
         x, y, z = np.array(self.xyz(t))/const.au.value
 
+        lim = 1.2*np.max(np.array([np.max(np.abs(x)), np.max(np.abs(y)), np.max(np.abs(z))]))
+        
         xTrans, yTrans, zTrans = np.array(self.xyz(self.t0))/const.au.value
         xEcl, yEcl, zEcl = np.array(self.xyz(self.t_ecl))/const.au.value
         xPeri, yPeri, zPeri = np.array(self.xyz(self.t_peri))/const.au.value
 
-        fig, axes = plt.subplots(3, 1, sharex=False, figsize=(10, 14))
+        fig, axes = plt.subplots(3, 1, sharex=False, figsize=(4, 12))
         
         axes[0].plot(y, x, '.', c='k', ms=2)
         axes[0].plot(0,0, '*', c='r', ms=15)
@@ -583,8 +585,10 @@ class KeplerOrbit(object):
             axes[0].plot(yPeri, xPeri, 'o', c='r', ms=5, label=r'$\rm Periastron$')
         axes[0].set_xlabel('$y$')
         axes[0].set_ylabel('$x$')
+        axes[0].set_xlim(-lim, lim)
+        axes[0].set_ylim(-lim, lim)
         axes[0].invert_yaxis()
-        axes[0].set_aspect('equal')
+#         axes[0].set_aspect('equal', 'box')
         axes[0].legend(loc=6, bbox_to_anchor=(1,0.5))
 
         axes[1].plot(y, z, '.', c='k', ms=2)
@@ -593,9 +597,11 @@ class KeplerOrbit(object):
         axes[1].plot(yEcl, zEcl, 'o', c='k', ms=7)
         if self.e != 0:
             axes[1].plot(yPeri, zPeri, 'o', c='r', ms=5)
-        axes[1].set_aspect('equal')
         axes[1].set_xlabel('$y$')
         axes[1].set_ylabel('$z$')
+        axes[1].set_xlim(-lim, lim)
+        axes[1].set_ylim(-lim, lim)
+#         axes[1].set_aspect('equal', 'box')
 
         axes[2].plot(x, z, '.', c='k', ms=2)
         axes[2].plot(0,0, '*', c='r', ms=15)
@@ -605,7 +611,9 @@ class KeplerOrbit(object):
             axes[2].plot(xPeri, zPeri, 'o', c='r', ms=5)
         axes[2].set_xlabel('$x$')
         axes[2].set_ylabel('$z$')
-        axes[2].set_aspect('equal')
+        axes[2].set_xlim(-lim, lim)
+        axes[2].set_ylim(-lim, lim)
+#         axes[2].set_aspect('equal', 'box')
         
         fig.subplots_adjust(hspace=0.35)
         

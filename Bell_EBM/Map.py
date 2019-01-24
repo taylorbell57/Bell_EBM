@@ -330,7 +330,7 @@ class Map(object):
                 rollCount = -(np.where(np.abs(self.lon-refLon) < self.dlon/2.+1e-6)[0][-1]-int(self.lon.size/2.))
                 dissMap = np.roll(dissMap, rollCount, axis=1)
 
-            ax.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0, origin='lower')
+            im = ax.imshow(dissMap, cmap='inferno', extent=(-180,180,-90,90), vmin=0, origin='lower')
             ax.set_xlabel(r'$\rm Longitude$')
             ax.set_ylabel(r'$\rm Latitude$')
             ax.set_xticks([-180,-90,0,90,180])
