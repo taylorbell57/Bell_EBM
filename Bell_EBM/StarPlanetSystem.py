@@ -196,8 +196,12 @@ class System(object):
         
         if t is None:
             # Use Prot instead as map would rotate
-            t = self.planet.orbit.t0+np.linspace(0., self.planet.orbit.Prot, 1000)
-            x = t/self.planet.orbit.Prot - np.rint(t[0]/self.planet.orbit.Prot)
+            t = self.planet.map.time+np.linspace(0., self.planet.orbit.Prot, 1000)
+            x = self.get_phase(self.planet.map.time+np.linspace(0., self.planet.orbit.Porb, 1000))
+            t = t[np.argsort(x)]
+        else:
+            t = t.flatten()
+            x = self.get_phase(t)
         
         if type(t)!=np.ndarray or len(t.shape)==1:
             t = np.array([t]).reshape(-1,1)
@@ -431,10 +435,8 @@ class System(object):
             return None
         
         if t is None:
-            # Use Prot instead as map would rotate
-            tMax = self.planet.orbit.Porb-(self.planet.orbit.Prot_input-self.planet.orbit.Prot)
-            t = self.planet.map.time+np.linspace(0., tMax, 1000)
-            x = self.get_phase(t)*self.planet.orbit.Porb/tMax
+            t = self.planet.map.time+np.linspace(0., self.planet.orbit.Prot, 1000)
+            x = self.get_phase(self.planet.map.time+np.linspace(0., self.planet.orbit.Porb, 1000))
         else:
             t = t.flatten()
             x = self.get_phase(t)
