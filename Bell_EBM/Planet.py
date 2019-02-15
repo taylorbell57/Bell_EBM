@@ -226,8 +226,8 @@ class Planet(object):
             omegaWind = vWind/self.rad # radians/s
             self.wind_dlon = omegaWind/(self.map.dlon*np.pi/180)
             upwindIndex = np.roll(np.arange(self.map.nlon), int(np.sign(self.wind_dlon)))
-            self.upwindLonIndex = (np.ones(16).reshape(-1,1)*upwindIndex).astype(int)
-            self.upwindLatIndex = (np.arange(16).reshape(-1,1)*np.ones(32).reshape(1,-1)).astype(int)
+            self.upwindLonIndex = (np.ones(self.map.nlat).reshape(-1,1)*upwindIndex).astype(int)
+            self.upwindLatIndex = (np.arange(self.map.nlat).reshape(-1,1)*np.ones(self.map.nlon).reshape(1,-1)).astype(int)
         
         self.orbit = KeplerOrbit(a=a, Porb=Porb, inc=inc, t0=t0, e=e, Omega=Omega, argp=argp,
                                  obliq=obliq, argobliq=argobliq, Prot=Prot,
