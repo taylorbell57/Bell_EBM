@@ -194,6 +194,11 @@ class System(object):
             
         """
         
+        if self.planet.orbit.e != 0. and (T is None or t is None):
+            print('Error: Maps and times must be entered for eccentric planets. Failing to do so'+
+                  ' will result in non-sensical lightcurves.')
+            return None
+        
         if t is None:
             # Use Prot instead as map would rotate
             t = self.planet.map.time+np.linspace(0., self.planet.orbit.Prot, 1000)
@@ -430,7 +435,7 @@ class System(object):
         """
         
         if self.planet.orbit.e != 0. and (T is None or t is None):
-            print('Warning: Maps and times must be entered for eccentric planets. Failing to do so'+
+            print('Error: Maps and times must be entered for eccentric planets. Failing to do so'+
                   ' will result in non-sensical lightcurves.')
             return None
         
