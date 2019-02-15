@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-18
+# Last Update: 2019-02-15
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -270,7 +270,14 @@ class System(object):
             else:
                 C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams))
         
-        dT_flux = (self.Fin(t, TA)[0]-self.planet.Fout(T))*dt/C
+        if self.planet.instRedistFrac!=0:
+            dT_flux = ((1-self.planet.instRedistFrac)*self.Fin(t, TA)[0]
+                       +self.planet.instRedistFrac*np.sum(self.Fin(t, TA))/self.planet.map.npix)
+        else:
+            dT_flux = self.Fin(t, TA)[0]
+        if self.planet.internalFlux!=0:
+            dT_flux += self.planet.internalFlux        
+        dT_flux = (dT_flux-self.planet.Fout(T))*dt/C
         
         # advect gas
         if self.planet.wind_dlon != 0:
@@ -312,7 +319,14 @@ class System(object):
         plug = self.planet.mlDepth*self.planet.mlDensity
         cp = h2.lte_cp(T, *self.planet.cpParams)
         
-        dEs = (self.Fin(t, TA)[0]-self.planet.Fout(T))*dt
+        if self.planet.instRedistFrac!=0:
+            dEs = ((1-self.planet.instRedistFrac)*self.Fin(t, TA)[0]
+                       +self.planet.instRedistFrac*np.sum(self.Fin(t, TA))/self.planet.map.npix)
+        else:
+            dEs = self.Fin(t, TA)[0]
+        if self.planet.internalFlux!=0:
+            dEs += self.planet.internalFlux        
+        dEs = (dEs-self.planet.Fout(T))*dt
         
         C_EQ = self.planet.mlDepth*self.planet.mlDensity*cp
         
@@ -349,7 +363,8 @@ class System(object):
         
         return dTs + dT_adv
 
-    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True, intermediates=False, progressBar=False, minTemp=0):
+    def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True,
+                  intermediates=False, progressBar=False, minTemp=0):
         """Evolve the planet's temperature map with time.
         
         Args:
@@ -419,7 +434,7 @@ class System(object):
         
         return times, maps
         
-    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
+    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=False, allowThermal=True):
         """A convenience plotting routine to show the planet's phasecurve.
 
         Args:

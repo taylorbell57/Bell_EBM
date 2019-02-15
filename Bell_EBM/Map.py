@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-12-19
+# Last Update: 2019-02-15
 
 import numpy as np
 import matplotlib
