@@ -21,7 +21,6 @@ class Planet(object):
         g (float): The planet's surface gravity in m/s^2.
         instRedistFrac (float): The fraction of flux that is instantly redistributed across the entire planet.
         internalFlux (float): The planet's internal heating flux.
-        map (Bell_EBM.Map): The planet's temperature map.
         orbit (Bell_EBM.KeplerOrbit): The planet's orbit.
         plType (str): The planet's composition.
         trasmissivity (float): The trasmissivity of the emitting layer (between 0 and 1).
@@ -65,6 +64,11 @@ class Planet(object):
         return self.orbit.t0
     
     @property
+    def map(self):
+        """Bell_EBM.Map: The planet's temperature map."""
+        return self._map
+    
+    @property
     def mass(self):
         """float: The planet's mass in kg.
         
@@ -104,7 +108,10 @@ class Planet(object):
         """
         return self._rad
     
-    
+    @property
+    def vWind(self):
+        """float: The planet's windspeed in m/s."""
+        return self._vWind
     
     
     
@@ -225,17 +232,10 @@ class Planet(object):
             print('Planet type not accepted!')
             return False
         
+        self._vWind = vWind
+        
         #Map Attributes
         self.map = Map(nlat=nlat, nlon=nlon)
-        
-        if vWind == None:
-            self.wind_dlon = 0.
-        else:
-            omegaWind = vWind/self.rad # radians/s
-            self.wind_dlon = omegaWind/(self.map.dlon*np.pi/180)
-            upwindIndex = np.roll(np.arange(self.map.nlon), int(np.sign(self.wind_dlon)))
-            self.upwindLonIndex = (np.ones(self.map.nlat).reshape(-1,1)*upwindIndex).astype(int)
-            self.upwindLatIndex = (np.arange(self.map.nlat).reshape(-1,1)*np.ones(self.map.nlon).reshape(1,-1)).astype(int)
         
         self.orbit = KeplerOrbit(a=a, Porb=Porb, inc=inc, t0=t0, e=e, Omega=Omega, argp=argp,
                                  obliq=obliq, argobliq=argobliq, Prot=Prot,
@@ -255,6 +255,21 @@ class Planet(object):
     @Prot.setter
     def Prot(self, Prot):
         self.orbit.Prot = Prot
+        return
+    
+    @map.setter
+    def map(self, map):
+        self._map = map
+        
+        if self.vWind == None:
+            self.wind_dlon = 0.
+        else:
+            omegaWind = self.vWind/self.rad # radians/s
+            self.wind_dlon = omegaWind/(self.map.dlon*np.pi/180)
+            upwindIndex = np.roll(np.arange(self.map.nlon), int(np.sign(self.wind_dlon)))
+            self.upwindLonIndex = (np.ones(self.map.nlat).reshape(-1,1)*upwindIndex).astype(int)
+            self.upwindLatIndex = (np.arange(self.map.nlat).reshape(-1,1)*np.ones(self.map.nlon).reshape(1,-1)).astype(int)
+        
         return
     
     @mass.setter
@@ -315,6 +330,20 @@ class Planet(object):
         
         return
     
+    @vWind.setter
+    def vWind(self, vWind):
+        self._vWind = vWind
+        
+        if self.vWind == None:
+            self.wind_dlon = 0.
+        else:
+            omegaWind = self.vWind/self.rad # radians/s
+            self.wind_dlon = omegaWind/(self.map.dlon*np.pi/180)
+            upwindIndex = np.roll(np.arange(self.map.nlon), int(np.sign(self.wind_dlon)))
+            self.upwindLonIndex = (np.ones(self.map.nlat).reshape(-1,1)*upwindIndex).astype(int)
+            self.upwindLatIndex = (np.arange(self.map.nlat).reshape(-1,1)*np.ones(self.map.nlon).reshape(1,-1)).astype(int)
+        
+        return
     
     
     
