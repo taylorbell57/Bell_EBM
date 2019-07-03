@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2019-02-15
+# Last Update: 2019-07-03
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -174,7 +174,8 @@ class System(object):
         
         return self.Firr(t, TA, bolo, tStarBright, wav)*self.planet.weight(t, TA)
 
-    def lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=True, allowThermal=True):
+    def lightcurve(self, t=None, T=None, TA=None, bolo=True, tStarBright=None, wav=4.5e-6,
+                   allowReflect=True, allowThermal=True, lookup=True):
         """Calculate the planet's lightcurve (ignoring any occultations).
         
         Args:
@@ -206,7 +207,7 @@ class System(object):
             T = self.planet.map.values[np.newaxis,:]
         
         if allowThermal:
-            fp = self.planet.Fp_vis(t, T, bolo, wav)
+            fp = self.planet.Fp_vis(t, T, TA, bolo, wav, lookup=lookup)
         else:
             fp = np.zeros_like(t.flatten())
         
@@ -244,7 +245,7 @@ class System(object):
             c = 1  +  b/(fp_fstar/(self.planet.rad/self.star.rad)**2)
             return a*np.log(c)**-1
     
-    def ODE_EQ(self, t, T, dt, TA=None, Fin=None):
+    def ODE_EQ(self, t, T, dt, TA=None, Fin=None, lookup=True):
         """The derivative in temperature with respect to time.
         
         This function neglects for the timescale of dissociation/recombination for bell2018 planets.
@@ -268,10 +269,13 @@ class System(object):
         if not callable(self.planet.cp):
             C = self.planet.C
         else:
-            if self.planet.cpParams is None:
-                C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T))
+            if lookup:
+                C = (self.planet.mlDepth*self.planet.mlDensity*self.planet._cps_precomputed[T.astype(int)])
             else:
-                C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams))
+                if self.planet.cpParams is None:
+                    C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T))
+                else:
+                    C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams))
         
         if self.planet.instRedistFrac!=0:
             dT_flux = ((1-self.planet.instRedistFrac)*Fin
@@ -280,7 +284,7 @@ class System(object):
             dT_flux = Fin*1. #multiply by 1 to make sure we don't modify the original array
         if self.planet.internalFlux!=0:
             dT_flux += self.planet.internalFlux        
-        dT_flux = (dT_flux-self.planet.Fout(T))*dt/C
+        dT_flux = (dT_flux-self.planet.Fout(T, lookup=lookup))*dt/C
         
         # advect gas
         if self.planet.wind_dlon != 0:
@@ -301,7 +305,7 @@ class System(object):
         dT_diss = dDiss*h2.dissE*plug
         return (dE-(dT*cp*plug+dT_diss))**2
     
-    def ODE_NEQ(self, t, T, dt, TA=None, Fin=None):
+    def ODE_NEQ(self, t, T, dt, TA=None, Fin=None, lookup=True):
         """The derivative in temperature with respect to time.
         
         This function accounts for the timescale of dissociation/recombination for bell2018 planets.
@@ -332,7 +336,7 @@ class System(object):
             dEs = Fin*1. #multiply by 1 to make sure we don't modify the original array
         if self.planet.internalFlux!=0:
             dEs += self.planet.internalFlux        
-        dEs = (dEs-self.planet.Fout(T))*dt
+        dEs = (dEs-self.planet.Fout(T, lookup=lookup))*dt
         
         C_EQ = self.planet.mlDepth*self.planet.mlDensity*cp
         
@@ -370,7 +374,7 @@ class System(object):
         return dTs + dT_adv
 
     def run_model(self, T0=None, t0=0., t1=None, dt=None, verbose=True,
-                  intermediates=False, progressBar=False, minTemp=0):
+                  intermediates=False, progressBar=False, minTemp=0, lookup=True):
         """Evolve the planet's temperature map with time.
         
         Args:
@@ -426,7 +430,7 @@ class System(object):
             iterator = range
         
         for i in iterator(1, len(times)):
-            newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i], Fin))[np.newaxis,:]
+            newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i], Fin, lookup))[np.newaxis,:]
             newMap[newMap<minTemp] = minTemp
             if intermediates:
                 maps = np.append(maps, newMap, axis=0)
@@ -445,7 +449,8 @@ class System(object):
         
         return times, maps
         
-    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=False, allowThermal=True):
+    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6,
+                        allowReflect=False, allowThermal=True, lookup=True):
         """A convenience plotting routine to show the planet's phasecurve.
 
         Args:
@@ -492,7 +497,7 @@ class System(object):
             T = T[order]
         
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav, allowReflect=allowReflect,
-                             allowThermal=allowThermal)*1e6
+                             allowThermal=allowThermal, lookup=lookup)*1e6
         
         plt.plot(x, lc)
         if self.planet.orbit.e == 0:
@@ -515,7 +520,8 @@ class System(object):
         plt.ylim(0)
         return plt.gcf()
     
-    def plot_tempcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6, allowReflect=False, allowThermal=True):
+    def plot_tempcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6,
+                       allowReflect=False, allowThermal=True, lookup=True):
         """A convenience plotting routine to show the planet's phasecurve in units of temperature.
         
         Args:
@@ -561,7 +567,7 @@ class System(object):
             T = T[order]
         
         lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav,
-                             allowReflect=allowReflect, allowThermal=allowThermal)
+                             allowReflect=allowReflect, allowThermal=allowThermal, lookup=lookup)
         tc = self.invert_lc(lc, bolo=bolo, tStarBright=tStarBright, wav=wav)
         
         plt.plot(x, tc)

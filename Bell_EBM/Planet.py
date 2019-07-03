@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2019-02-15
+# Last Update: 2019-07-03
 
 import numpy as np
 import matplotlib
@@ -174,6 +174,10 @@ class Planet(object):
         self._mlDensity = mlDensity
         self.T_exponent = T_exponent
         
+        # Precompute Ts to allow for fast Fout computations with lookup tables
+        Ts = np.arange(0,10001)+0.5
+        self._Fouts_precomputed = const.sigma_sb.value*Ts**T_exponent
+        
         if emissivity > 1:
             self.emissivity = 1.
         elif emissivity < 0:
@@ -228,6 +232,7 @@ class Planet(object):
             self._mlDensity = 1./self.g      # s^2/m
             if self.cpParams is None:
                 self.cpParams = h2.getSahaApproxParams(self.mlDepth)
+            self._cps_precomputed = self.cp(Ts, *self.cpParams)
         else:
             print('Planet type not accepted!')
             return False
@@ -349,7 +354,7 @@ class Planet(object):
     
     
     
-    def Fout(self, T=None, bolo=True, wav=1e-6):
+    def Fout(self, T=None, bolo=True, wav=4.5e-6, lookup=True):
         """Calculate the instantaneous outgoing flux.
         
         Args:
@@ -366,12 +371,15 @@ class Planet(object):
         if T is None:
             T = self.map.values
         
-        if bolo:
-            return self.emissivity*const.sigma_sb.value*T**self.T_exponent
+        if lookup and bolo:
+            return self._Fouts_precomputed[T.astype(int)]
         else:
-            a = (2*const.h.value*const.c.value**2/wav**5)
-            b = (const.h.value*const.c.value)/(wav*const.k_B.value)
-            return self.emissivity*a/np.expm1(b/T)
+            if bolo:
+                return self.emissivity*const.sigma_sb.value*T**self.T_exponent
+            else:
+                a = (2*const.h.value*const.c.value**2/wav**5)
+                b = (const.h.value*const.c.value)/(wav*const.k_B.value)
+                return self.emissivity*a/np.expm1(b/T)
         
     def weight(self, t, TA=None, refPos='SSP'):
         """Calculate the weighting of map pixels.
@@ -380,7 +388,7 @@ class Planet(object):
         
         Args:
             t (ndarray): The time in days.
-            EA (ndarray, optional): The eccentric anomaly in radians.
+            TA (ndarray, optional): The true anomaly in radians.
             refPos (str, optional): The reference position; SSP (sub-stellar point) or SOP (sub-observer point).
         
         Returns:
@@ -422,14 +430,15 @@ class Planet(object):
         return weight
 
     
-    def Fp_vis(self, t, T=None, bolo=True, wav=4.5e-6):
+    def Fp_vis(self, t, T=None, TA=None, bolo=True, wav=4.5e-6, lookup=True):
         """Calculate apparent outgoing planetary flux (used for making phasecurves).
         
         Weight flux by visibility/illumination kernel, assuming the star/observer are infinitely far away for now.
         
         Args:
             t (ndarray): The time in days.
-            T (ndarray): The temperature (if None, use self.map.values).
+            T (ndarray, optional): The temperature (if None, use self.map.values).
+            TA (ndarray, optional): The true anomaly in radians.
             bolo (bool, optional): Determines whether computed flux is bolometric
                 (True, default) or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False
@@ -442,8 +451,8 @@ class Planet(object):
         if T is None:
             T = self.map.values[np.newaxis,:]
         
-        weights = self.weight(t, refPos='SOP')
-        flux = self.Fout(T, bolo, wav)*self.map.pixArea*self.rad**2
+        weights = self.weight(t, TA, 'SOP')
+        flux = self.Fout(T, bolo, wav, lookup=lookup)*self.map.pixArea*self.rad**2
         # used to try to remove wiggles from finite number of pixels coming in and out of view
         # weightsNormed = weights*(4.*np.pi/self.map.npix)/np.pi
         
