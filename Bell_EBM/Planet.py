@@ -314,6 +314,11 @@ class Planet(object):
         # Update dependent properties
         if not callable(self.cp):
             self.C = self.mlDepth*self.mlDensity*self.cp
+        else:
+            self.cpParams = h2.getSahaApproxParams(self.mlDepth)
+            Ts = np.arange(0,10001)+0.5
+            self._cps_precomputed = self.cp(Ts, *self.cpParams)
+            
         return
     
     @mlDensity.setter
@@ -332,6 +337,9 @@ class Planet(object):
         # Update dependent properties
         if not callable(self.cp):
             self.C = self.mlDepth*self.mlDensity*self.cp
+        else:
+            Ts = np.arange(0,10001)+0.5
+            self._cps_precomputed = self.cp(Ts, *self.cpParams)
         
         return
     
@@ -362,6 +370,8 @@ class Planet(object):
             bolo (bool, optional): Determines whether computed flux is bolometric
                 (True, default) or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False.
+            lookup (bool, optional): Use lookup tables to speed up computation of
+                bolometric flux (default=True).
         
         Returns:
             ndarray: The emitted flux in the same shape as T.
@@ -442,6 +452,8 @@ class Planet(object):
             bolo (bool, optional): Determines whether computed flux is bolometric
                 (True, default) or wavelength dependent (False).
             wav (float, optional): The wavelength to use if bolo==False
+            lookup (bool, optional): Use lookup tables to speed up computation of
+                bolometric flux (default=True).
         
         Returns:
            ndarray: The apparent emitted flux. Has shape (t.size, self.map.npix).

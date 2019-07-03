@@ -183,12 +183,15 @@ class System(object):
             T (ndarray, optional): The temperature map (either shape (1, self.planet.map.npix) and
                 constant over time or shape is (t.shape, self.planet.map.npix). If None,
                 use self.planet.map.values instead (default).
+            TA (ndarray, optional): The true anomaly in radians.
             bolo (bool, optional): Determines whether computed flux is bolometric
                 (True, default) or wavelength dependent (False).
             tStarBright (ndarray): The stellar brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
             allowReflect (bool, optional): Account for the contribution from reflected light.
             allowThermal (bool, optional): Account for the contribution from thermal emission.
+            lookup (bool, optional): Use lookup tables to speed up computation of
+                bolometric flux (default=True).
         
         Returns:
             ndarray: The observed planetary flux normalized by the stellar flux.
@@ -255,6 +258,9 @@ class System(object):
             T (ndarray): The temperature map with shape (self.planet.map.npix).
             dt (float): The time step in days.
             TA (ndarray, optional): The true anomaly in radians (much faster to compute if provided).
+            Fin (ndarray, optional): The incident stellar flux for each pixel.
+            lookup (bool, optional): Use lookup tables to speed up computation of
+                bolometric flux (default=True).
         
         Returns:
             ndarray: The derivative in temperature with respect to time.
@@ -315,6 +321,9 @@ class System(object):
             T (ndarray): The temperature map with shape (self.planet.map.npix).
             dt (float): The timestep in days.
             TA (ndarray, optional): The true anomaly in radians (much faster to compute if provided).
+            Fin (ndarray, optional): The incident stellar flux for each pixel.
+            lookup (bool, optional): Use lookup tables to speed up computation of
+                bolometric flux (default=True).
         
         Returns:
             ndarray: The derivative in temperature with respect to time.
@@ -387,6 +396,8 @@ class System(object):
             intermediates (bool, optional): Output the map from every time step? Otherwise just returns the last step.
             progressBar (bool, optional): Show a progress bar for the run (nice for long runs).
             minTemp (float, optional): The minimum allowable temperature (can be used to vaguely mimick internal heating).
+            lookup (bool, optional): Use lookup tables to speed up computation of
+                bolometric flux (default=True).
         
         Returns:
             list: A list of 2 ndarrays containing the time and map of each time step.
@@ -449,7 +460,7 @@ class System(object):
         
         return times, maps
         
-    def plot_lightcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6,
+    def plot_lightcurve(self, t=None, T=None, TA=None, bolo=True, tStarBright=None, wav=4.5e-6,
                         allowReflect=False, allowThermal=True, lookup=True):
         """A convenience plotting routine to show the planet's phasecurve.
 
@@ -459,12 +470,15 @@ class System(object):
             T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix)
                 if the map is constant or (t.size,self.planet.map.npix). If None, use
                 self.planet.map.values instead.
+            TA (ndarray, optional): The true anomaly in radians.
             bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
                 or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
             allowReflect (bool, optional): Account for the contribution from reflected light.
             allowThermal (bool, optional): Account for the contribution from thermal emission.
+            lookup (bool, optional): Use lookup tables to speed up computation of
+                bolometric flux (default=True).
 
         Returns:
             figure: The figure containing the plot.
@@ -496,8 +510,8 @@ class System(object):
         if T.shape[0] != 1:
             T = T[order]
         
-        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav, allowReflect=allowReflect,
-                             allowThermal=allowThermal, lookup=lookup)*1e6
+        lc = self.lightcurve(t, T, TA, bolo, tStarBright, wav, allowReflect,
+                             allowThermal, lookup)*1e6
         
         plt.plot(x, lc)
         if self.planet.orbit.e == 0:
@@ -520,7 +534,7 @@ class System(object):
         plt.ylim(0)
         return plt.gcf()
     
-    def plot_tempcurve(self, t=None, T=None, bolo=True, tStarBright=None, wav=4.5e-6,
+    def plot_tempcurve(self, t=None, T=None, TA=None, bolo=True, tStarBright=None, wav=4.5e-6,
                        allowReflect=False, allowThermal=True, lookup=True):
         """A convenience plotting routine to show the planet's phasecurve in units of temperature.
         
@@ -530,12 +544,15 @@ class System(object):
             T (ndarray, optional): The temperature map in K with shape (1, self.planet.map.npix) if
                 the map is constant or (t.size,self.planet.map.npix). If None, use
                 self.planet.map.values instead. Must be provided for eccentric planets.
+            TA (ndarray, optional): The true anomaly in radians.
             bolo (bool, optional): Determines whether computed flux is bolometric (True, default)
                 or wavelength dependent (False).
             tBright (ndarray): The brightness temperature to use if bolo==False.
             wav (float, optional): The wavelength to use if bolo==False.
             allowReflect (bool, optional): Account for the contribution from reflected light.
             allowThermal (bool, optional): Account for the contribution from thermal emission.
+            lookup (bool, optional): Use lookup tables to speed up computation of
+                bolometric flux (default=True).
         
         Returns:
             figure: The figure containing the plot.
@@ -566,9 +583,9 @@ class System(object):
         if T.shape[0] != 1:
             T = T[order]
         
-        lc = self.lightcurve(t, T, bolo=bolo, tStarBright=tStarBright, wav=wav,
-                             allowReflect=allowReflect, allowThermal=allowThermal, lookup=lookup)
-        tc = self.invert_lc(lc, bolo=bolo, tStarBright=tStarBright, wav=wav)
+        lc = self.lightcurve(t, T, TA, bolo, tStarBright, wav,
+                             allowReflect, allowThermal, lookup)
+        tc = self.invert_lc(lc, bolo, tStarBright, wav)
         
         plt.plot(x, tc)
         

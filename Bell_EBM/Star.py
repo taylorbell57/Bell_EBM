@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2018-11-30
+# Last Update: 2019-07-03
 
 import numpy as np
 import astropy.constants as const
@@ -11,6 +11,7 @@ class Star(object):
         teff (float): The star's effective temperature in K.
         rad (float): The star's radius in solar radii.
         mass (float): The star's mass in solar masses.
+        Fbolo (float): The star's bolometric flux in Watts.
     
     """
     
