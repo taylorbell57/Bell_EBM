@@ -45,7 +45,7 @@ Thank you to Lisa Dang for beta-testing the package!
 License & Attribution
 =====================
 
-Copyright (c) 2018 Taylor James Bell.
+Copyright (c) 2019 Taylor James Bell.
 
 Bell_EBM is free software made available under the MIT License. For details
 see the `LICENSE <https://github.com/taylorbell57/Bell_EBM/blob/master/LICENSE>`_.
