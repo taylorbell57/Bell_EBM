@@ -401,13 +401,23 @@ class Planet(object):
             print('Reference point "'+str(refPos)+'" not understood!')
             return False
         
-        weight = (np.cos(self.map.latGrid_radians[np.newaxis,:])
-                  *np.cos(refLat*np.pi/180.)
-                  *np.cos((self.map.lonGrid_radians[np.newaxis,:]-refLon*np.pi/180.))
-                  + np.sin(self.map.latGrid_radians[np.newaxis,:])
-                    *np.sin(refLat*np.pi/180.))
         
-        weight = np.max(np.append(np.zeros_like(weight[np.newaxis,:]), weight[np.newaxis,:], axis=0), axis=0)
+        if ((type(refLat)==float or len(refLat)==1.) and refLat==0.) or np.all(refLat==0.):
+            cosLatTerms = np.cos(self.map.latGrid_radians[np.newaxis,:])
+            sinLatTerms = 0.
+        else:
+            cosLatTerms = np.cos(self.map.latGrid_radians[np.newaxis,:])*np.cos(refLat*np.pi/180.)
+            sinLatTerms = np.sin(self.map.latGrid_radians[np.newaxis,:])*np.sin(refLat*np.pi/180.)
+        
+        if (len(refLon)==1 and refLon==0.) or np.all(refLon==0.):
+            lonGrid = self.map.lonGrid_radians[np.newaxis,:]
+        else:
+            lonGrid = self.map.lonGrid_radians[np.newaxis,:]-refLon*np.pi/180.
+        
+        
+        weight = (cosLatTerms*np.cos(lonGrid) + sinLatTerms)
+        weight[weight<0] = 0
+        
         
         return weight
 

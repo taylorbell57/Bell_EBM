@@ -7,3 +7,5 @@ saves
 Bell_EBM_WASP12b.ipynb
 Bell_EBM_WASP12b_Looped.ipynb
 Testing FSSI.ipynb
+Bell_EBM/*.pyc
+Bell_EBM/__pycache__

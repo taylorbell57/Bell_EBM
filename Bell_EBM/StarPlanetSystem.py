@@ -148,7 +148,7 @@ class System(object):
         
         # Just grab semi-major axis for circular orbits to speed things up
         if self.planet.orbit.e == 0:
-            dist = self.planet.orbit.a*np.ones_like(t)
+            dist = self.planet.orbit.a
         else:
             dist = self.planet.orbit.distance(t, TA)
             
@@ -244,7 +244,7 @@ class System(object):
             c = 1  +  b/(fp_fstar/(self.planet.rad/self.star.rad)**2)
             return a*np.log(c)**-1
     
-    def ODE_EQ(self, t, T, dt, TA=None):
+    def ODE_EQ(self, t, T, dt, TA=None, Fin=None):
         """The derivative in temperature with respect to time.
         
         This function neglects for the timescale of dissociation/recombination for bell2018 planets.
@@ -262,6 +262,9 @@ class System(object):
         
         dt *= 24.*3600.
         
+        if Fin is None:
+            Fin = self.Fin(t, TA)[0]
+        
         if not callable(self.planet.cp):
             C = self.planet.C
         else:
@@ -271,10 +274,10 @@ class System(object):
                 C = (self.planet.mlDepth*self.planet.mlDensity*self.planet.cp(T, *self.planet.cpParams))
         
         if self.planet.instRedistFrac!=0:
-            dT_flux = ((1-self.planet.instRedistFrac)*self.Fin(t, TA)[0]
+            dT_flux = ((1-self.planet.instRedistFrac)*Fin
                        +self.planet.instRedistFrac*np.sum(self.Fin(t, TA))/self.planet.map.npix)
         else:
-            dT_flux = self.Fin(t, TA)[0]
+            dT_flux = Fin*1. #multiply by 1 to make sure we don't modify the original array
         if self.planet.internalFlux!=0:
             dT_flux += self.planet.internalFlux        
         dT_flux = (dT_flux-self.planet.Fout(T))*dt/C
@@ -298,7 +301,7 @@ class System(object):
         dT_diss = dDiss*h2.dissE*plug
         return (dE-(dT*cp*plug+dT_diss))**2
     
-    def ODE_NEQ(self, t, T, dt, TA=None):
+    def ODE_NEQ(self, t, T, dt, TA=None, Fin=None):
         """The derivative in temperature with respect to time.
         
         This function accounts for the timescale of dissociation/recombination for bell2018 planets.
@@ -316,14 +319,17 @@ class System(object):
         
         dt *= 24.*3600.
         
+        if Fin is None:
+            Fin = self.Fin(t, TA)[0]
+        
         plug = self.planet.mlDepth*self.planet.mlDensity
         cp = h2.lte_cp(T, *self.planet.cpParams)
         
         if self.planet.instRedistFrac!=0:
-            dEs = ((1-self.planet.instRedistFrac)*self.Fin(t, TA)[0]
-                       +self.planet.instRedistFrac*np.sum(self.Fin(t, TA))/self.planet.map.npix)
+            dEs = ((1-self.planet.instRedistFrac)*Fin
+                       +self.planet.instRedistFrac*np.sum(Fin)/self.planet.map.npix)
         else:
-            dEs = self.Fin(t, TA)[0]
+            dEs = Fin*1. #multiply by 1 to make sure we don't modify the original array
         if self.planet.internalFlux!=0:
             dEs += self.planet.internalFlux        
         dEs = (dEs-self.planet.Fout(T))*dt
@@ -400,6 +406,11 @@ class System(object):
         times = (t0 + np.arange(int(np.rint((t1-t0)/dt)))*dt)[:,np.newaxis]
         TAs = self.planet.orbit.true_anomaly(times)[:,:,np.newaxis]
         
+        if self.planet.orbit.e==0 and self.planet.orbit.obliq==0:
+            Fin = self.Fin()[0]
+        else:
+            Fin = None
+        
         if verbose:
             print('Starting Run')
         maps = T0[np.newaxis,:]
@@ -415,7 +426,7 @@ class System(object):
             iterator = range
         
         for i in iterator(1, len(times)):
-            newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i]))[np.newaxis,:]
+            newMap = (maps[-1]+self.ODE(times[i], maps[-1], dt, TAs[i], Fin))[np.newaxis,:]
             newMap[newMap<minTemp] = minTemp
             if intermediates:
                 maps = np.append(maps, newMap, axis=0)

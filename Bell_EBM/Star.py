@@ -27,6 +27,7 @@ class Star(object):
         self.teff = teff                   # K
         self.rad = rad*const.R_sun.value   # m
         self.mass = mass*const.M_sun.value
+        self.Fbolo = const.sigma_sb.value*self.teff**4 * np.pi*self.rad**2
     
     def Fstar(self, bolo=True, tBright=None, wav=4.5e-6):
         """Calculate the stellar flux for lightcurve normalization purposes.
@@ -38,12 +39,12 @@ class Star(object):
             wav (float, optional): The wavelength to use if bolo==False.
         
         Returns:
-            ndarray: The emitted flux in the same shape as T.
+            ndarray: The emitted flux (in Watts) in the same shape as T.
         
         """
         
         if bolo:
-            return const.sigma_sb.value*self.teff**4 * np.pi*self.rad**2
+            return self.Fbolo
         else:
             if tBright is None:
                 tBright = self.teff
