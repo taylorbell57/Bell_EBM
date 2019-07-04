@@ -1,5 +1,5 @@
 # Author: Taylor Bell
-# Last Update: 2019-07-03
+# Last Update: 2019-07-04
 
 import numpy as np
 import matplotlib
@@ -436,6 +436,8 @@ class Planet(object):
         weight = (cosLatTerms*np.cos(lonGrid) + sinLatTerms)
         weight[weight<0] = 0
         
+        # used to try to remove wiggles from finite number of pixels coming in and out of view
+        weight /= np.sum(weight*self.map.pixArea, axis=(1,2)).reshape(-1,1,1)/np.pi
         
         return weight
 
@@ -465,10 +467,8 @@ class Planet(object):
         
         weights = self.weight(t, TA, 'SOP')
         flux = self.Fout(T, bolo, wav, lookup=lookup)*self.map.pixArea*self.rad**2
-        # used to try to remove wiggles from finite number of pixels coming in and out of view
-        # weightsNormed = weights*(4.*np.pi/self.map.npix)/np.pi
         
-        return np.sum(flux*weights, axis=(1,2))#/np.sum(weightsNormed, axis=1)
+        return np.sum(flux*weights, axis=(1,2))
 
     def plot_map(self, tempMap=None, refLon=None):
         """A convenience routine to plot the planet's temperature map.
