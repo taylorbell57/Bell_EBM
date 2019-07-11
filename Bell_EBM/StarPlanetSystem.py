@@ -152,7 +152,7 @@ class System(object):
         else:
             dist = self.planet.orbit.distance(t, TA)
             
-        firr = self.planet.absorptivity*self.star.Fstar(bolo, tStarBright, wav)/(np.pi*dist**2)
+        firr = self.star.Fstar(bolo, tStarBright, wav)/(np.pi*dist**2)
         
         return firr
 
@@ -270,7 +270,7 @@ class System(object):
         dt *= 24.*3600.
         
         if Fin is None:
-            Fin = self.Fin(t, TA)[0]
+            Fin = self.planet.absorptivity*self.Fin(t, TA)[0]
         
         if not callable(self.planet.cp):
             C = self.planet.C
@@ -333,7 +333,7 @@ class System(object):
         dt *= 24.*3600.
         
         if Fin is None:
-            Fin = self.Fin(t, TA)[0]
+            Fin = self.planet.absorptivity*self.Fin(t, TA)[0]
         
         plug = self.planet.mlDepth*self.planet.mlDensity
         cp = h2.lte_cp(T, *self.planet.cpParams)
@@ -422,7 +422,7 @@ class System(object):
         TAs = self.planet.orbit.true_anomaly(times)[:,:,np.newaxis]
         
         if self.planet.orbit.e==0 and self.planet.orbit.obliq==0:
-            Fin = self.Fin()[0]
+            Fin = self.planet.absorptivity*self.Fin()[0]
         else:
             Fin = None
         
