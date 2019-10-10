@@ -285,7 +285,7 @@ class System(object):
         
         if self.planet.instRedistFrac!=0:
             dT_flux = ((1-self.planet.instRedistFrac)*Fin
-                       +self.planet.instRedistFrac*np.sum(self.Fin(t, TA))/self.planet.map.npix)
+                       +self.planet.instRedistFrac*np.sum(Fin)/self.planet.map.npix)
         else:
             dT_flux = Fin*1. #multiply by 1 to make sure we don't modify the original array
         if self.planet.internalFlux!=0:

@@ -22,7 +22,6 @@ class Planet(object):
         instRedistFrac (float): The fraction of flux that is instantly redistributed across the entire planet.
         internalFlux (float): The planet's internal heating flux.
         orbit (Bell_EBM.KeplerOrbit): The planet's orbit.
-        plType (str): The planet's composition.
         trasmissivity (float): The trasmissivity of the emitting layer (between 0 and 1).
         T_exponent (float): The exponent which determinges the rate at which the planet cools (4 for blackbody cooling,
             1 for Newtonian cooling) when calculating Fout with bolo=True.
@@ -38,6 +37,13 @@ class Planet(object):
         
         """
         return 1-self.albedo-self.trasmissivity
+    
+    @property
+    def plType(self):
+        """str: The planet's composition.
+        
+        """
+        return self._plType
     
     @property
     def cp(self):
@@ -162,7 +168,6 @@ class Planet(object):
         """
         
         #Planet Attributes
-        self.plType = plType.lower()
         self._rad = rad   # m
         self._mass = mass # kg
         self.g = const.G.value*self.mass/self.rad**2 # m/s^2
@@ -175,7 +180,7 @@ class Planet(object):
         self.T_exponent = T_exponent
         
         # Precompute Ts to allow for fast Fout computations with lookup tables
-        Ts = np.arange(0,10001)+0.5
+        Ts = np.arange(0,12001)+0.5
         self._Fouts_precomputed = const.sigma_sb.value*Ts**T_exponent
         
         if emissivity > 1:
@@ -195,6 +200,7 @@ class Planet(object):
         self.internalFlux = internalFlux
         self.instRedistFrac = instRedistFrac
         
+        self._plType = plType.lower()
         # Planet's Thermal Attributes
         if self.plType=='water':
             #water
@@ -247,6 +253,49 @@ class Planet(object):
                                  m2=self.mass)
     
     
+    @plType.setter
+    def plType(self, plType):
+        """str: The planet's composition.
+        
+        """
+        
+        plType=plType.lower()
+        
+        # Update Planet's Thermal Attributes
+        if plType=='water':
+            #water
+            self._cp = 4.1813e3             # J/kg/K
+            self._mlDepth = 50.              # m
+            self._mlDensity = 1e3           # kg/m^3
+            self.C = self.mlDepth*self.mlDensity*self.cp
+        elif plType == 'rock':
+            #basalt
+            self._cp = 0.84e3                # J/kg/K
+            self._mlDepth = 0.5              # m
+            self._mlDensity = 3e3            # kg/m^3
+            self.C = self.mlDepth*self.mlDensity*self.cp
+        elif plType == 'gas':
+            # H2 atmo
+            self._cp = 14.31e3              # J/kg/K
+            self._mlDepth = 0.1e5           # Pa
+            self._mlDensity = 1/self.g      # s^2/m
+            self.C = self.mlDepth*self.mlDensity*self.cp
+        elif plType == 'bell2018':
+            # LTE H2+H atmo
+            self._cp = h2.true_cp
+            self._mlDepth = 0.1e5           # Pa
+            self._mlDensity = 1./self.g      # s^2/m
+            self.cpParams = h2.getSahaApproxParams(self.mlDepth)
+            Ts = np.arange(0,12001)+0.5
+            self._cps_precomputed = self.cp(Ts, *self.cpParams)
+        else:
+            print('Planet type not accepted!')
+            return False
+        
+        self._plType=plType
+        
+        return
+    
     @Porb.setter
     def Porb(self, Porb):
         self.orbit.Porb = Porb
@@ -288,7 +337,8 @@ class Planet(object):
         if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
             if self.mlDensity == 1./g_old:
                 self.mlDensity = 1./self.g        # s^2/m
-            self.C = self.mlDepth*self.mlDensity*self.cp
+            if not callable(self.cp):
+                self.C = self.mlDepth*self.mlDensity*self.cp
                 
         return
     
@@ -303,7 +353,8 @@ class Planet(object):
         if self.plType.lower() == 'gas' or self.plType.lower() == 'bell2018':
             if self.mlDensity == 1./g_old:
                 self.mlDensity = 1./self.g        # s^2/m
-            self.C = self.mlDepth*self.mlDensity*self.cp
+            if not callable(self.cp):
+                self.C = self.mlDepth*self.mlDensity*self.cp
                 
         return
     
@@ -316,7 +367,7 @@ class Planet(object):
             self.C = self.mlDepth*self.mlDensity*self.cp
         else:
             self.cpParams = h2.getSahaApproxParams(self.mlDepth)
-            Ts = np.arange(0,10001)+0.5
+            Ts = np.arange(0,12001)+0.5
             self._cps_precomputed = self.cp(Ts, *self.cpParams)
             
         return
@@ -338,7 +389,7 @@ class Planet(object):
         if not callable(self.cp):
             self.C = self.mlDepth*self.mlDensity*self.cp
         else:
-            Ts = np.arange(0,10001)+0.5
+            Ts = np.arange(0,12001)+0.5
             self._cps_precomputed = self.cp(Ts, *self.cpParams)
         
         return
@@ -420,7 +471,7 @@ class Planet(object):
             return False
         
         
-        if ((type(refLat)==float or len(refLat)==1.) and refLat==0.) or np.all(refLat==0.):
+        if ((type(refLat)==float or type(refLat)==np.float64 or len(refLat)==1.) and refLat==0.) or np.all(refLat==0.):
             cosLatTerms = np.cos(self.map.latGrid_radians[np.newaxis,:])
             sinLatTerms = 0.
         else:

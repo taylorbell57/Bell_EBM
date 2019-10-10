@@ -11,7 +11,6 @@ class Star(object):
         teff (float): The star's effective temperature in K.
         rad (float): The star's radius in solar radii.
         mass (float): The star's mass in solar masses.
-        Fbolo (float): The star's bolometric flux in Watts.
     
     """
     
@@ -28,7 +27,6 @@ class Star(object):
         self.teff = teff                   # K
         self.rad = rad*const.R_sun.value   # m
         self.mass = mass*const.M_sun.value
-        self.Fbolo = const.sigma_sb.value*self.teff**4 * np.pi*self.rad**2
     
     def Fstar(self, bolo=True, tBright=None, wav=4.5e-6):
         """Calculate the stellar flux for lightcurve normalization purposes.
@@ -45,7 +43,7 @@ class Star(object):
         """
         
         if bolo:
-            return self.Fbolo
+            return const.sigma_sb.value*self.teff**4 * np.pi*self.rad**2
         else:
             if tBright is None:
                 tBright = self.teff
