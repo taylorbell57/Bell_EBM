@@ -494,15 +494,16 @@ class System(object):
             t = self.planet.map.time+np.linspace(0., self.planet.orbit.Porb, 1000)
         else:
             t = t.flatten()
-        x = self.get_phase(t)
         
-        t = t.reshape(-1,1,1)
-        
-        if self.planet.orbit.e != 0:
-            x *= self.planet.orbit.Porb
+        if self.planet.orbit.e == 0:
+            x = self.get_phase(t)
+        else:
+            x = t%self.planet.Porb
         
         if T is None:
             T = self.planet.map.values[np.newaxis,:]
+        
+        t = t.reshape(-1,1,1)
         
         order = np.argsort(x)
         x = x[order]
@@ -572,8 +573,7 @@ class System(object):
         
         if self.planet.orbit.e == 0:
             x = self.get_phase(t)
-        else:# self.planet.orbit.e != 0:
-            #x *= self.planet.orbit.Porb
+        else:
             x = t%self.planet.Porb
         
         if T is None:
