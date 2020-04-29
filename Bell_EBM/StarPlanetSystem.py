@@ -433,7 +433,7 @@ class System(object):
             x = self.get_phase(t)
         
         if self.planet.orbit.e != 0:
-            x *= self.planet.orbit.Porb
+            x = t%self.planet.Porb
         
         if T is None:
             T = self.planet.map.values.reshape(1,-1)
@@ -506,7 +506,7 @@ class System(object):
             x = self.get_phase(t)
         
         if self.planet.orbit.e != 0:
-            x *= self.planet.orbit.Porb
+            x = t%self.planet.Porb
         
         if T is None:
             T = self.planet.map.values.reshape(1,-1)
