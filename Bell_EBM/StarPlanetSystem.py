@@ -569,10 +569,12 @@ class System(object):
         else:
             t = t.flatten()
         
-        x = self.get_phase(t)
         
-        if self.planet.orbit.e != 0:
-            x *= self.planet.orbit.Porb
+        if self.planet.orbit.e == 0:
+            x = self.get_phase(t)
+        else:# self.planet.orbit.e != 0:
+            #x *= self.planet.orbit.Porb
+            x = t%self.planet.Porb
         
         if T is None:
             T = self.planet.map.values[np.newaxis,:]
