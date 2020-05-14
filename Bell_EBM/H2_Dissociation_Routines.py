@@ -117,7 +117,7 @@ def dDissFracSaha(T, P):
         z_r = T[good]/(2.*omegaRot)
         Y = (nQ(2,T[good])/nQ(1,T[good])**2*z_r*np.exp(ionE/(const.k_B.value*T[good]))
              *P/(const.k_B.value*T[good]))
-        dY = Y*(-3./2.*T[good]**-1-dissE/const.k_B.value*T[good]**-2)
+        dY = Y*(-3./2.*T[good]**-1-ionE/const.k_B.value*T[good]**-2)
         dchi_H_dY = 2.*(-1.)*(1+np.sqrt(1+4.*Y))**-2*(1./2.)*np.sqrt(1.+4.*Y)**-1*(4.)
         dDFrac[good] = dchi_H_dY*dY
         return dDFrac
