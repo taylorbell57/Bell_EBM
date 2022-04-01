@@ -130,14 +130,6 @@ class KeplerOrbit(object):
         self._m1 = m1
         self._m2 = m2
         
-        #Orbital Attributes
-        self.Porb_input = Porb
-        self._Porb = Porb
-        if self.Porb is not None:
-            self.mean_motion = 2.*np.pi/self.Porb
-        else:
-            self.mean_motion = None
-        
         # Obliquity Attributes
         self.obliq = obliq                 # degrees toward star
         self.argobliq = argobliq           # degrees from t0
@@ -145,28 +137,17 @@ class KeplerOrbit(object):
             self.ProtSign = 1.
         else:
             self.ProtSign = -1.
-        
-        #Rotation Rate Attributes
-        if Prot is not None:
-            self.Prot_input = Prot
-            self.Prot = Prot*self.ProtSign               # days
-        elif self.Porb is not None:
-            self.Prot_input = None
-            self.Prot = self.Porb*self.ProtSign
-        else:
-            self.Prot_input = None
-            self.Prot = None
-        
-        if self.Porb is not None:
-            self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180.)/(2.*np.pi)*self.Porb
-            if self.t_peri < 0.:
-                self.t_peri = self.Porb + self.t_peri
 
-            self.t_ecl = (self.t0 + (self.ta_to_ma(3.*np.pi/2.-self.argp*np.pi/180.)
-                                     - self.ta_to_ma(1.*np.pi/2.-self.argp*np.pi/180.))/(2.*np.pi)*self.Porb)
-            if self.t_ecl < 0.:
-                self.t_ecl = self.Porb + self.t_ecl
-            
+        # Input Period Attributes
+        self.Porb_input = Porb
+        self.Prot_input = Prot
+
+        # Set Porb and dependent parameters
+        if self.Porb_input is None:
+            self.Porb = self.solve_period()
+        else:
+            self.Porb = Porb
+        
         return
     
     
@@ -188,9 +169,9 @@ class KeplerOrbit(object):
     def Porb(self, Porb):
         self._Porb = Porb
             
-        # Update self.Prot
+        # Update self.Prot if needed
         if self.Prot_input is None:
-            self.Prot = self.Porb
+            self.Prot = self.Porb*self.ProtSign
     
         self.t_peri = self.t0-self.ta_to_ma(np.pi/2.-self.argp*np.pi/180.)/(2.*np.pi)*self.Porb
         if self.t_peri < 0.:
