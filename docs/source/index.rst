@@ -11,7 +11,7 @@ Bell_EBM is an object-oriented and flexible Energy Balance Model (EBM) that can 
 Package Usage
 =============
 
-Check out the `Quickstart Tutorial <https://msi.mcgill.ca/~bellt/tutorials/Bell_EBM_Tutorial.html>`_ to get an idea of the capabilities of this EBM, and explore the API for a more detailed description of each of the functions and objects. But the simplest, default usage of the model is:
+Check out the `Quickstart Tutorial <https://www.taylorbell.ca/tutorials/Bell_EBM_Tutorial.html>`_ to get an idea of the capabilities of this EBM, and explore the API for a more detailed description of each of the functions and objects. But the simplest, default usage of the model is:
 
 .. code-block:: python
 
@@ -45,7 +45,7 @@ Thank you to Lisa Dang for beta-testing the package!
 License & Attribution
 =====================
 
-Copyright (c) 2019 Taylor James Bell.
+Copyright (c) 2023 Taylor James Bell.
 
 Bell_EBM is free software made available under the MIT License. For details
 see the `LICENSE <https://github.com/taylorbell57/Bell_EBM/blob/master/LICENSE>`_.
