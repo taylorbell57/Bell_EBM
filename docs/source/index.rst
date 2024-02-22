@@ -13,7 +13,7 @@ Installation
 
 You can install Bell_EBM by simply doing
 
-.. code-block:: python
+.. code-block:: bash
 
    pip install Bell_EBM@git+https://github.com/taylorbell57/Bell_EBM
 
