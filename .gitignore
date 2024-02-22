@@ -7,5 +7,8 @@ saves
 Bell_EBM_WASP12b.ipynb
 Bell_EBM_WASP12b_Looped.ipynb
 Testing FSSI.ipynb
-Bell_EBM/*.pyc
-Bell_EBM/__pycache__
+*.pyc
+__pycache__
+__version__.py
+build
+*.egg-info
