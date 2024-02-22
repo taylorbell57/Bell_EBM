@@ -20,7 +20,7 @@ class Planet(object):
         emissivity (float): The emissivity of the emitting layer (between 0 and 1).
         g (float): The planet's surface gravity in m/s^2.
         instRedistFrac (float): The fraction of flux that is instantly redistributed across the entire planet.
-        internalFlux (float): The planet's internal heating flux.
+        internalFlux (float): The planet's internal heating flux in W/m^2.
         orbit (Bell_EBM.KeplerOrbit): The planet's orbit.
         trasmissivity (float): The trasmissivity of the emitting layer (between 0 and 1).
         T_exponent (float): The exponent which determinges the rate at which the planet cools (4 for blackbody cooling,
@@ -159,7 +159,7 @@ class Planet(object):
                 1 for Newtonian cooling).
             emissivity (float, optional): The emissivity of the emitting layer (between 0 and 1).
             trasmissivity (float, optional): The trasmissivity of the emitting layer (between 0 and 1).
-            internalFlux (float, optional): The planet's internal heating flux.
+            internalFlux (float, optional): The planet's internal heating flux in W/m^2.
             instRedistFrac (float): The fraction of flux that is instantly redistributed across the entire planet.
             nlat (int, optional): The number of latitudinal cells to use for rectangular maps.
             nlon (int, optional): The number of longitudinal cells to use for rectangular maps.
@@ -197,7 +197,7 @@ class Planet(object):
         else:
             self.trasmissivity = trasmissivity
         
-        self.internalFlux = internalFlux
+        self.internalFlux = internalFlux  # W/m^2
         self.instRedistFrac = instRedistFrac
         
         self._plType = plType.lower()
